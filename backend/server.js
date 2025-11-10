@@ -5,6 +5,7 @@ import {db} from './db.js';
 import sampleRoutes from './routes/sampleRoutes.js';
 import authRoutes from "./routes/authRoutes.js";
 import moveRoutes from "./routes/moveRoutes.js";
+import roomRoutes from "./routes/roomRoutes.js";
 
 dotenv.config();
 
@@ -15,6 +16,7 @@ app.use(express.json());
 app.use("/api/sample", sampleRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/moves", moveRoutes);
+app.use("/api", roomRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {console.log(`Server running on port ${PORT}`)});
