@@ -10,6 +10,7 @@ import boxRoutes from "./routes/boxRoutes.js";
 import itemRoutes from "./routes/itemRoutes.js";
 import categoryRoutes from "./routes/categoryRoutes.js";
 import boxCategoryRoutes from "./routes/boxCategoryRoutes.js";
+import documentRoutes from "./routes/documentRoutes.js";
 
 dotenv.config();
 
@@ -25,6 +26,7 @@ app.use("/api", boxRoutes);
 app.use("/api", itemRoutes);
 app.use("/api", categoryRoutes);
 app.use("/api", boxCategoryRoutes);
+app.use("/api", documentRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {console.log(`Server running on port ${PORT}`)});
