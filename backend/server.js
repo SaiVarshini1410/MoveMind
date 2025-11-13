@@ -7,6 +7,9 @@ import authRoutes from "./routes/authRoutes.js";
 import moveRoutes from "./routes/moveRoutes.js";
 import roomRoutes from "./routes/roomRoutes.js";
 import boxRoutes from "./routes/boxRoutes.js";
+import itemRoutes from "./routes/itemRoutes.js";
+import categoryRoutes from "./routes/categoryRoutes.js";
+import boxCategoryRoutes from "./routes/boxCategoryRoutes.js";
 
 dotenv.config();
 
@@ -19,6 +22,9 @@ app.use("/api/auth", authRoutes);
 app.use("/api/moves", moveRoutes);
 app.use("/api", roomRoutes);
 app.use("/api", boxRoutes);
+app.use("/api", itemRoutes);
+app.use("/api", categoryRoutes);
+app.use("/api", boxCategoryRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {console.log(`Server running on port ${PORT}`)});
