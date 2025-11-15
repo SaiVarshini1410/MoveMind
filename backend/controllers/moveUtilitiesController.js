@@ -46,7 +46,6 @@ export const listUtilitiesForMove = async (req, res) => {
         mu.utility_id,
         u.provider_name,
         u.type,
-        mu.move_in,
         mu.account_number,
         mu.start_date,
         mu.stop_date,
@@ -70,7 +69,6 @@ export const addUtilityToMove = async (req, res) => {
   const { moveId } = req.params;
   const {
     utility_id,
-    move_in = null,
     account_number = null,
     start_date = null,
     stop_date = null,
@@ -93,13 +91,12 @@ export const addUtilityToMove = async (req, res) => {
 
     const q = `
       INSERT INTO move_utilities
-        (move_id, utility_id, move_in, account_number, start_date, stop_date, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+        (move_id, utility_id, account_number, start_date, stop_date, status)
+      VALUES (?, ?, ?, ?, ?, ?)
     `;
     const params = [
       moveId,
       utility_id,
-      move_in,
       account_number,
       start_date,
       stop_date,
@@ -126,7 +123,6 @@ export const getMoveUtility = (req, res) => {
       mu.utility_id,
       u.provider_name,
       u.type,
-      mu.move_in,
       mu.account_number,
       mu.start_date,
       mu.stop_date,
@@ -150,7 +146,6 @@ export const getMoveUtility = (req, res) => {
 export const updateMoveUtility = (req, res) => {
   const { id } = req.params;
   const {
-    move_in,
     account_number,
     start_date,
     stop_date,
@@ -177,11 +172,22 @@ export const updateMoveUtility = (req, res) => {
     const fields = [];
     const params = [];
 
-    if (move_in !== undefined)       { fields.push("move_in = ?");       params.push(move_in); }
-    if (account_number !== undefined){ fields.push("account_number = ?");params.push(account_number); }
-    if (start_date !== undefined)    { fields.push("start_date = ?");    params.push(start_date); }
-    if (stop_date !== undefined)     { fields.push("stop_date = ?");     params.push(stop_date); }
-    if (status !== undefined)        { fields.push("status = ?");        params.push(status); }
+    if (account_number !== undefined) {
+      fields.push("account_number = ?");
+      params.push(account_number);
+    }
+    if (start_date !== undefined) {
+      fields.push("start_date = ?");
+      params.push(start_date);
+    }
+    if (stop_date !== undefined) {
+      fields.push("stop_date = ?");
+      params.push(stop_date);
+    }
+    if (status !== undefined) {
+      fields.push("status = ?");
+      params.push(status);
+    }
 
     if (!fields.length) {
       return res.status(400).json({ message: "No fields to update" });
