@@ -46,10 +46,93 @@ id INT PRIMARY KEY AUTO_INCREMENT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES User(id) ON DELETE CASCADE ON UPDATE CASCADE,
     FOREIGN KEY (from_address_id) REFERENCES Address(id) ON DELETE RESTRICT ON UPDATE CASCADE,
-    FOREIGN KEY (to_address_id) REFERENCES Address(id) ON DELETE RESTRICT ON UPDATE CASCADE
+    FOREIGN KEY (to_address_id) REFERENCES Address(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    INDEX idx_user_id(user_id),      
+    INDEX idx_status(status),        
+    INDEX idx_move_date(move_date)   
+    );
+    
+CREATE TABLE Room(
+id INT PRIMARY KEY AUTO_INCREMENT,
+name VARCHAR(100) NOT NULL,
+floor INT ,
+move_id INT NOT NULL,
+FOREIGN KEY (move_id) REFERENCES Move(id) ON UPDATE CASCADE  ON DELETE CASCADE,
+INDEX idx_move_id(move_id));
+
+CREATE TABLE Box(
+id INT PRIMARY KEY AUTO_INCREMENT,
+label_code VARCHAR(50) UNIQUE NOT NULL,
+room_id INT,
+is_fragile BOOLEAN DEFAULT FALSE,
+weight DECIMAL(10, 2) NOT NULL,
+status ENUM('empty','packed','loaded','delivered','unpacked') DEFAULT 'empty',
+    FOREIGN KEY (room_id) REFERENCES Room(id) ON UPDATE CASCADE ON DELETE SET NULL,
+    INDEX idx_room_id(room_id),      
+    INDEX idx_status(status)        
 );
 
 
+CREATE TABLE Box_Category(
+    box_id INT NOT NULL,
+    category_id INT NOT NULL,
+    PRIMARY KEY (box_id, category_id),
+    FOREIGN KEY (box_id) REFERENCES Box(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (category_id) REFERENCES Category(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    INDEX idx_category_id(category_id) 
+);
+
+CREATE TABLE Item(
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    box_id INT NOT NULL,
+    name VARCHAR(200) NOT NULL,
+    quantity INT DEFAULT 1,
+    est_value DECIMAL(10, 2),
+    FOREIGN KEY (box_id) REFERENCES Box(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    INDEX idx_box_id(box_id)
+);
+
+CREATE TABLE move_utilities(
+utility_id INT NOT NULL,
+move_id INT NOT NULL,
+account_number VARCHAR(100) ,
+stop_date DATE ,
+start_date DATE ,
+status ENUM ('planned','requested','confirmed','active','cancelled') DEFAULT 'planned',
+CONSTRAINT mv_f1 FOREIGN KEY (utility_id) REFERENCES Utility(id) ON DELETE RESTRICT ON UPDATE CASCADE ,
+CONSTRAINT mv_f2 FOREIGN KEY (move_id) REFERENCES Move(id) ON DELETE CASCADE ON UPDATE CASCADE,
+CONSTRAINT mv_pk PRIMARY KEY(move_id, utility_id),
+  INDEX idx_status (status),
+  INDEX idx_start_date (start_date));
+
+CREATE TABLE Appointment(
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    move_id INT NOT NULL,
+    title VARCHAR(200) NOT NULL,
+    description TEXT,
+    apt_date DATE NOT NULL,
+    apt_time TIME NOT NULL,
+    contact_person VARCHAR(100),
+    contact_phone VARCHAR(20),
+    status ENUM('scheduled','completed','cancelled') DEFAULT 'scheduled',
+    FOREIGN KEY (move_id) REFERENCES Move(id) ON DELETE CASCADE ON UPDATE CASCADE ,
+    INDEX idx_move_id(move_id),  
+    INDEX idx_apt_date(apt_date),
+    INDEX idx_status(status)  
+);
+
+
+
+CREATE TABLE Document(
+ id INT AUTO_INCREMENT PRIMARY KEY,
+ move_id INT NOT NULL,
+ doc_type VARCHAR(100) NOT NULL,
+ file_url VARCHAR(500) NOT NULL,
+uploaded_on TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+FOREIGN KEY (move_id) REFERENCES Move(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    INDEX idx_move_id(move_id),
+    INDEX idx_doc_type(doc_type)
+);
 
 
 
