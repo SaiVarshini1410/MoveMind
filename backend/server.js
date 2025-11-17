@@ -14,6 +14,8 @@ import documentRoutes from "./routes/documentRoutes.js";
 import appointmentRoutes from "./routes/appointmentRoutes.js";
 import utilityRoutes from "./routes/utilityRoutes.js";
 import moveUtilityRoutes from "./routes/moveUtilityRoutes.js";
+import addressesRoutes from "./routes/addressesRoutes.js";
+
 
 dotenv.config();
 
@@ -33,6 +35,7 @@ app.use("/api", documentRoutes);
 app.use("/api", appointmentRoutes);
 app.use("/api", utilityRoutes);
 app.use("/api", moveUtilityRoutes);
+app.use("/api/addresses", addressesRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {console.log(`Server running on port ${PORT}`)});
