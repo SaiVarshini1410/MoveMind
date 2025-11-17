@@ -6,6 +6,9 @@ import RegisterPage from "./pages/auth/RegisterPage";
 import DashboardPage from "./pages/DashboardPage";
 import MovesPage from "./pages/MovesPage";
 import AddressesPage from "./pages/AddressesPage";
+import RoomsPage from "./pages/RoomsPage";
+import BoxesPage from "./pages/BoxesPage";
+import ScanBoxPage from "./pages/ScanBoxPage";
 import { getToken } from "./utils/auth";
 
 function RequireAuth({ children }) {
@@ -51,6 +54,34 @@ function App() {
           </RequireAuth>
         }
       />
+
+      <Route
+        path="/moves/:moveId/rooms"
+        element={
+          <RequireAuth>
+            <RoomsPage />
+          </RequireAuth>
+        }
+      />
+
+      <Route
+        path="/moves/:moveId/rooms/:roomId/boxes"
+        element={
+          <RequireAuth>
+            <BoxesPage />
+          </RequireAuth>
+        }
+      />
+
+      <Route
+        path="/scan/:labelCode"
+        element={
+          <RequireAuth>
+            <ScanBoxPage />
+          </RequireAuth>
+        }
+      />
+
 
       <Route
         path="/"

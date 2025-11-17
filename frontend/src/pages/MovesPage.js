@@ -1,4 +1,3 @@
-// src/pages/MovesPage.js
 import React, { useEffect, useState } from "react";
 import {
   Box,
@@ -23,6 +22,7 @@ import {
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
+import { useNavigate } from "react-router-dom";
 import AppLayout from "../components/layout/AppLayout";
 import apiClient from "../api/apiClient";
 
@@ -59,6 +59,8 @@ function MovesPage() {
     from_address_id: "",
     to_address_id: ""
   });
+
+  const navigate = useNavigate();
 
   const loadData = async () => {
     setLoading(true);
@@ -267,12 +269,18 @@ function MovesPage() {
                       <TableCell sx={{ color: "#F9FAFB" }}>
                         {move.title}
                       </TableCell>
-                      <TableCell sx={{ color: "text.secondary" }} align="center">
+                      <TableCell
+                        sx={{ color: "text.secondary" }}
+                        align="center"
+                      >
                         {move.move_date
                           ? move.move_date.substring(0, 10)
                           : "—"}
                       </TableCell>
-                      <TableCell sx={{ color: "text.secondary" }} align="center">
+                      <TableCell
+                        sx={{ color: "text.secondary" }}
+                        align="center"
+                      >
                         {formatStatus(move.status)}
                       </TableCell>
                       <TableCell align="center">
@@ -283,6 +291,17 @@ function MovesPage() {
                             gap: 1
                           }}
                         >
+                          {/* New Rooms button */}
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            onClick={() =>
+                              navigate(`/moves/${move.id}/rooms`)
+                            }
+                          >
+                            Rooms
+                          </Button>
+
                           <IconButton
                             size="small"
                             onClick={() => openEditDialog(move)}
