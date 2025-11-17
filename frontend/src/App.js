@@ -1,25 +1,29 @@
 import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
+
 import LoginPage from "./pages/auth/LoginPage";
 import RegisterPage from "./pages/auth/RegisterPage";
 import DashboardPage from "./pages/DashboardPage";
+import MovesPage from "./pages/MovesPage";
+import AddressesPage from "./pages/AddressesPage";
 import { getToken } from "./utils/auth";
 
-
-const RequireAuth = ({ children }) => {
+function RequireAuth({ children }) {
   const token = getToken();
   if (!token) {
     return <Navigate to="/login" replace />;
   }
   return children;
-};
+}
 
-const App = () => {
+function App() {
+  const token = getToken();
+
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+
 
       <Route
         path="/dashboard"
@@ -30,10 +34,47 @@ const App = () => {
         }
       />
 
+      <Route
+        path="/moves"
+        element={
+          <RequireAuth>
+            <MovesPage />
+          </RequireAuth>
+        }
+      />
 
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      <Route
+        path="/addresses"
+        element={
+          <RequireAuth>
+            <AddressesPage />
+          </RequireAuth>
+        }
+      />
+
+      <Route
+        path="/"
+        element={
+          token ? (
+            <Navigate to="/dashboard" replace />
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
+      />
+
+      <Route
+        path="*"
+        element={
+          token ? (
+            <Navigate to="/dashboard" replace />
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
+      />
     </Routes>
   );
-};
+}
 
 export default App;
