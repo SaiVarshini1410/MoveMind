@@ -1,33 +1,37 @@
+// src/pages/MovesPage.js
 import React, { useEffect, useState } from "react";
 import {
   Box,
   Typography,
   Paper,
+  Button,
+  Alert,
+  CircularProgress,
   Table,
   TableHead,
-  TableBody,
   TableRow,
   TableCell,
-  CircularProgress,
-  Alert,
-  Button,
+  TableBody,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
   TextField,
-  MenuItem
+  MenuItem,
+  IconButton
 } from "@mui/material";
+import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
+import AddIcon from "@mui/icons-material/Add";
 import AppLayout from "../components/layout/AppLayout";
 import apiClient from "../api/apiClient";
 
-
 const STATUS_OPTIONS = [
-  { value: "planned",     label: "Planned" },
-  { value: "packing",     label: "Packing" },
-  { value: "in_transit",  label: "In Transit" },
-  { value: "unpacking",   label: "Unpacking" },
-  { value: "done",        label: "Done" }
+  { value: "planned", label: "Planned" },
+  { value: "packing", label: "Packing" },
+  { value: "in_transit", label: "In transit" },
+  { value: "unpacking", label: "Unpacking" },
+  { value: "done", label: "Done" }
 ];
 
 const formatStatus = (value) => {
@@ -37,21 +41,18 @@ const formatStatus = (value) => {
 
 function MovesPage() {
   const [moves, setMoves] = useState([]);
+  const [addresses, setAddresses] = useState([]);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-
-  const [addresses, setAddresses] = useState([]);
-  const [addressesLoading, setAddressesLoading] = useState(false);
-  const [addressesError, setAddressesError] = useState("");
-
-
-  const [openDialog, setOpenDialog] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [formError, setFormError] = useState("");
+  const [dialogError, setDialogError] = useState("");
 
+  const [editingMove, setEditingMove] = useState(null);
 
-  const [newMove, setNewMove] = useState({
+  const [form, setForm] = useState({
     title: "",
     move_date: "",
     status: "planned",
@@ -59,14 +60,18 @@ function MovesPage() {
     to_address_id: ""
   });
 
-  const fetchMoves = async () => {
+  const loadData = async () => {
     setLoading(true);
     setError("");
     try {
-      const res = await apiClient.get("/moves");
-      setMoves(res.data || []);
+      const [movesRes, addrRes] = await Promise.all([
+        apiClient.get("/moves"),
+        apiClient.get("/addresses")
+      ]);
+      setMoves(movesRes.data || []);
+      setAddresses(addrRes.data || []);
     } catch (err) {
-      console.error("Error fetching moves:", err);
+      console.error("Error loading moves/addresses:", err);
       const msg =
         err.response?.data?.message ||
         err.response?.data?.error ||
@@ -77,237 +82,281 @@ function MovesPage() {
     }
   };
 
-  const fetchAddresses = async () => {
-    setAddressesLoading(true);
-    setAddressesError("");
-    try {
-      const res = await apiClient.get("/addresses");
-      setAddresses(res.data || []);
-    } catch (err) {
-      console.error("Error fetching addresses:", err);
-      const msg =
-        err.response?.data?.message ||
-        err.response?.data?.error ||
-        "Failed to load addresses.";
-      setAddressesError(msg);
-    } finally {
-      setAddressesLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchMoves();
-    fetchAddresses();
+    loadData();
   }, []);
 
-  const handleOpenDialog = () => {
-    setFormError("");
-    setNewMove({
+  const openCreateDialog = () => {
+    setEditingMove(null);
+    setForm({
       title: "",
       move_date: "",
       status: "planned",
       from_address_id: "",
       to_address_id: ""
     });
-    setOpenDialog(true);
+    setDialogError("");
+    setDialogOpen(true);
   };
 
-  const handleCloseDialog = () => {
+  const openEditDialog = (move) => {
+    setEditingMove(move);
+
+    let dateValue = "";
+    if (move.move_date) {
+      dateValue = move.move_date.substring(0, 10); // YYYY-MM-DD
+    }
+
+    setForm({
+      title: move.title || "",
+      move_date: dateValue,
+      status: move.status || "planned",
+      from_address_id: move.from_address_id || "",
+      to_address_id: move.to_address_id || ""
+    });
+    setDialogError("");
+    setDialogOpen(true);
+  };
+
+  const closeDialog = () => {
     if (saving) return;
-    setOpenDialog(false);
+    setDialogOpen(false);
   };
 
   const handleFormChange = (e) => {
     const { name, value } = e.target;
-    setNewMove((prev) => ({
-      ...prev,
-      [name]: value
-    }));
+    setForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleCreateMove = async (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
-    setFormError("");
+    setDialogError("");
 
-    if (!newMove.title || !newMove.from_address_id || !newMove.to_address_id) {
-      setFormError("Title, From address, and To address are required.");
+    const { title, move_date, status, from_address_id, to_address_id } = form;
+
+    if (!title || !from_address_id || !to_address_id) {
+      setDialogError("Title, From address and To address are required.");
       return;
     }
 
+    const payload = {
+      title,
+      move_date: move_date || null,
+      status,
+      from_address_id: Number(from_address_id),
+      to_address_id: Number(to_address_id)
+    };
+
     setSaving(true);
     try {
-      const payload = {
-        title: newMove.title,
-        move_date: newMove.move_date || null,
-        status: newMove.status,
-        from_address_id: parseInt(newMove.from_address_id, 10),
-        to_address_id: parseInt(newMove.to_address_id, 10)
-      };
-
-      await apiClient.post("/moves", payload);
-      setOpenDialog(false);
-      await fetchMoves();
+      if (editingMove) {
+        await apiClient.patch(`/moves/${editingMove.id}`, payload);
+      } else {
+        await apiClient.post("/moves", payload);
+      }
+      await loadData();
+      setDialogOpen(false);
     } catch (err) {
-      console.error("Error creating move:", err);
+      console.error("Error saving move:", err);
       const msg =
         err.response?.data?.message ||
         err.response?.data?.error ||
-        "Failed to create move.";
-      setFormError(msg);
+        "Failed to save move.";
+      setDialogError(msg);
     } finally {
       setSaving(false);
     }
   };
 
-  const noAddresses = !addressesLoading && addresses.length === 0;
+  const handleDelete = async (move) => {
+    const ok = window.confirm(
+      `Delete move "${move.title}"? This cannot be undone.`
+    );
+    if (!ok) return;
+
+    try {
+      await apiClient.delete(`/moves/${move.id}`);
+      await loadData();
+    } catch (err) {
+      console.error("Error deleting move:", err);
+      const msg =
+        err.response?.data?.message ||
+        err.response?.data?.error ||
+        "Failed to delete move.";
+      alert(msg);
+    }
+  };
 
   return (
     <AppLayout title="Moves">
-      <Box
-        sx={{
-          mb: 3,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between"
-        }}
-      >
+      <Box sx={{ mb: 3, display: "flex", justifyContent: "space-between" }}>
         <Box>
           <Typography variant="h4" gutterBottom>
             Moves
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            View and create moves. Each move links a from / to address.
+            Plan and track each move. Edit details or delete when you are done.
           </Typography>
         </Box>
-
-        <Button variant="contained" onClick={handleOpenDialog}>
-          New Move
-        </Button>
+        <Box sx={{ display: "flex", alignItems: "center" }}>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={openCreateDialog}
+          >
+            New move
+          </Button>
+        </Box>
       </Box>
 
-
-      {addressesError && (
-        <Alert severity="warning" sx={{ mb: 2 }}>
-          {addressesError}
-        </Alert>
-      )}
-
-
-      {loading && (
+      {loading ? (
         <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
           <CircularProgress />
         </Box>
-      )}
-
-      {error && !loading && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
-
-      {!loading && !error && (
-        <Paper
-          sx={{
-            bgcolor: "#020617",
-            borderRadius: 2,
-            border: "1px solid #111827",
-            overflow: "hidden"
-          }}
-        >
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell sx={{ color: "#E5E7EB" }}>Title</TableCell>
-                <TableCell sx={{ color: "#E5E7EB" }}>Move date</TableCell>
-                <TableCell sx={{ color: "#E5E7EB" }}>Status</TableCell>
-                <TableCell sx={{ color: "#E5E7EB" }}>Created at</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {moves.length === 0 ? (
+      ) : error ? (
+        <Alert severity="error">{error}</Alert>
+      ) : (
+        <Box sx={{ display: "flex", justifyContent: "center", mt: 1 }}>
+          <Paper
+            sx={{
+              width: "100%",
+              maxWidth: 900,
+              bgcolor: "#020617",
+              borderRadius: 2,
+              border: "1px solid #111827",
+              overflow: "hidden"
+            }}
+          >
+            <Table size="small">
+              <TableHead>
                 <TableRow>
-                  <TableCell colSpan={4} sx={{ color: "text.secondary" }}>
-                    No moves yet. Click &quot;New Move&quot; to create one.
+                  <TableCell sx={{ color: "#E5E7EB", width: "40%" }}>
+                    Title
+                  </TableCell>
+                  <TableCell
+                    sx={{ color: "#E5E7EB", width: "20%" }}
+                    align="center"
+                  >
+                    Move date
+                  </TableCell>
+                  <TableCell
+                    sx={{ color: "#E5E7EB", width: "20%" }}
+                    align="center"
+                  >
+                    Status
+                  </TableCell>
+                  <TableCell
+                    sx={{ color: "#E5E7EB", width: "20%" }}
+                    align="center"
+                  >
+                    Actions
                   </TableCell>
                 </TableRow>
-              ) : (
-                moves.map((m) => (
-                  <TableRow key={m.id} hover>
-                    <TableCell sx={{ color: "#F9FAFB" }}>{m.title}</TableCell>
-                    <TableCell sx={{ color: "text.secondary" }}>
-                      {m.move_date
-                        ? new Date(m.move_date).toLocaleDateString()
-                        : "-"}
-                    </TableCell>
-                    <TableCell sx={{ color: "text.secondary" }}>
-                      {formatStatus(m.status)}
-                    </TableCell>
-                    <TableCell sx={{ color: "text.secondary" }}>
-                      {m.created_at
-                        ? new Date(m.created_at).toLocaleString()
-                        : "-"}
+              </TableHead>
+              <TableBody>
+                {moves.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={4} sx={{ color: "text.secondary" }}>
+                      You don&apos;t have any moves yet. Click &quot;New move&quot; to
+                      create one.
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </Paper>
+                ) : (
+                  moves.map((move) => (
+                    <TableRow key={move.id} hover>
+                      <TableCell sx={{ color: "#F9FAFB" }}>
+                        {move.title}
+                      </TableCell>
+                      <TableCell sx={{ color: "text.secondary" }} align="center">
+                        {move.move_date
+                          ? move.move_date.substring(0, 10)
+                          : "—"}
+                      </TableCell>
+                      <TableCell sx={{ color: "text.secondary" }} align="center">
+                        {formatStatus(move.status)}
+                      </TableCell>
+                      <TableCell align="center">
+                        <Box
+                          sx={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 1
+                          }}
+                        >
+                          <IconButton
+                            size="small"
+                            onClick={() => openEditDialog(move)}
+                          >
+                            <EditIcon fontSize="small" />
+                          </IconButton>
+                          <IconButton
+                            size="small"
+                            color="error"
+                            onClick={() => handleDelete(move)}
+                          >
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </Box>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </Paper>
+        </Box>
       )}
 
-      <Dialog open={openDialog} onClose={handleCloseDialog} fullWidth maxWidth="sm">
-        <DialogTitle>New Move</DialogTitle>
-        <DialogContent>
-          {formError && (
+      <Dialog
+        open={dialogOpen}
+        onClose={saving ? undefined : closeDialog}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>
+          {editingMove ? "Edit move" : "Create a new move"}
+        </DialogTitle>
+        <DialogContent dividers>
+          {dialogError && (
             <Alert severity="error" sx={{ mb: 2 }}>
-              {formError}
+              {dialogError}
             </Alert>
           )}
 
-          {addressesLoading && (
+          {addresses.length < 2 && (
             <Alert severity="info" sx={{ mb: 2 }}>
-              Loading addresses...
+              You need at least two addresses (from / to) to create a move. Add
+              them on the Addresses page first.
             </Alert>
           )}
 
-          {noAddresses && (
-            <Alert severity="info" sx={{ mb: 2 }}>
-              You don&apos;t have any addresses yet. You&apos;ll need at least
-              two (from &amp; to) before creating a move.
-            </Alert>
-          )}
-
-          <Box component="form" onSubmit={handleCreateMove} sx={{ mt: 1 }}>
+          <Box
+            component="form"
+            onSubmit={handleSave}
+            sx={{ mt: 1, display: "flex", flexDirection: "column", gap: 2 }}
+          >
             <TextField
-              fullWidth
               label="Title"
               name="title"
-              margin="normal"
-              value={newMove.title}
+              fullWidth
+              value={form.title}
               onChange={handleFormChange}
-              required
             />
 
             <TextField
-              fullWidth
               label="Move date"
-              name="move_date"
               type="date"
-              margin="normal"
-              value={newMove.move_date}
+              name="move_date"
+              InputLabelProps={{ shrink: true }}
+              value={form.move_date}
               onChange={handleFormChange}
-              InputLabelProps={{
-                shrink: true
-              }}
             />
 
             <TextField
               select
-              fullWidth
               label="Status"
               name="status"
-              margin="normal"
-              value={newMove.status}
+              value={form.status}
               onChange={handleFormChange}
             >
               {STATUS_OPTIONS.map((s) => (
@@ -319,61 +368,47 @@ function MovesPage() {
 
             <TextField
               select
-              fullWidth
               label="From address"
               name="from_address_id"
-              margin="normal"
-              value={newMove.from_address_id}
+              value={form.from_address_id}
               onChange={handleFormChange}
-              disabled={addressesLoading || noAddresses}
-              required
-              helperText={
-                noAddresses
-                  ? "Add addresses first."
-                  : "Select the address you are moving from."
-              }
             >
               {addresses.map((addr) => (
                 <MenuItem key={addr.id} value={addr.id}>
-                  {addr.label} – {addr.city}, {addr.state}
+                  {addr.label} — {addr.line1}
                 </MenuItem>
               ))}
             </TextField>
 
             <TextField
               select
-              fullWidth
               label="To address"
               name="to_address_id"
-              margin="normal"
-              value={newMove.to_address_id}
+              value={form.to_address_id}
               onChange={handleFormChange}
-              disabled={addressesLoading || noAddresses}
-              required
-              helperText={
-                noAddresses
-                  ? "Add addresses first."
-                  : "Select the address you are moving to."
-              }
             >
               {addresses.map((addr) => (
                 <MenuItem key={addr.id} value={addr.id}>
-                  {addr.label} – {addr.city}, {addr.state}
+                  {addr.label} — {addr.line1}
                 </MenuItem>
               ))}
             </TextField>
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseDialog} disabled={saving}>
+          <Button onClick={closeDialog} disabled={saving}>
             Cancel
           </Button>
           <Button
-            onClick={handleCreateMove}
+            onClick={handleSave}
             variant="contained"
-            disabled={saving || addressesLoading || noAddresses}
+            disabled={saving || addresses.length < 2}
           >
-            {saving ? "Saving..." : "Create"}
+            {saving
+              ? "Saving..."
+              : editingMove
+              ? "Save changes"
+              : "Create move"}
           </Button>
         </DialogActions>
       </Dialog>
