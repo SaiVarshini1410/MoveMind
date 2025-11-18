@@ -1,4 +1,3 @@
-// src/pages/BoxesPage.js
 import React, { useEffect, useState } from "react";
 import {
   Box,
@@ -70,7 +69,6 @@ function BoxesPage() {
   const [qrText, setQrText] = useState("");
   const [qrError, setQrError] = useState("");
 
-  // ITEMS dialog state
   const [itemsDialogOpen, setItemsDialogOpen] = useState(false);
   const [itemsBox, setItemsBox] = useState(null);
   const [itemsLoading, setItemsLoading] = useState(false);
@@ -225,7 +223,7 @@ function BoxesPage() {
     }
   };
 
-  // ---------- ITEMS dialog helpers ----------
+
   const loadItems = async (boxId) => {
     setItemsLoading(true);
     setItemsError("");
@@ -316,7 +314,7 @@ function BoxesPage() {
     }
   };
 
-  // ---------- QR helpers ----------
+
   const handleOpenQrDialog = async (box) => {
     setQrBox(box);
     setQrDialogOpen(true);
@@ -366,7 +364,7 @@ function BoxesPage() {
 
   return (
     <AppLayout title="Boxes">
-      {/* Header */}
+
       <Box
         sx={{
           mb: 3,
@@ -407,7 +405,7 @@ function BoxesPage() {
         </Box>
       </Box>
 
-      {/* Body */}
+
       {loading ? (
         <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
           <CircularProgress />
@@ -449,7 +447,7 @@ function BoxesPage() {
                     minHeight: 170
                   }}
                 >
-                  {/* top row */}
+            
                   <Box
                     sx={{
                       display: "flex",
@@ -486,7 +484,7 @@ function BoxesPage() {
                     </Box>
                   </Box>
 
-                  {/* Weight row */}
+        
                   <Typography
                     variant="body2"
                     sx={{ color: "text.secondary" }}
@@ -497,7 +495,7 @@ function BoxesPage() {
                       : "—"}
                   </Typography>
 
-                  {/* Actions row */}
+             
                   <Box
                     sx={{
                       display: "flex",
@@ -523,7 +521,7 @@ function BoxesPage() {
                     </Button>
                   </Box>
 
-                  {/* Edit / delete */}
+
                   <Box
                     sx={{
                       display: "flex",
@@ -553,7 +551,7 @@ function BoxesPage() {
         </Box>
       )}
 
-      {/* Create / edit box dialog */}
+
       <Dialog
         open={dialogOpen}
         onClose={saving ? undefined : closeDialog}
@@ -632,7 +630,7 @@ function BoxesPage() {
         </DialogActions>
       </Dialog>
 
-      {/* QR dialog */}
+
       <Dialog
         open={qrDialogOpen}
         onClose={handleCloseQrDialog}
@@ -676,7 +674,7 @@ function BoxesPage() {
         </DialogActions>
       </Dialog>
 
-      {/* ITEMS dialog */}
+
       <Dialog
         open={itemsDialogOpen}
         onClose={handleCloseItemsDialog}
@@ -753,7 +751,6 @@ function BoxesPage() {
                 </Paper>
               )}
 
-              {/* Add item form */}
               <Box
                 component="form"
                 onSubmit={handleAddItem}
