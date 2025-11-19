@@ -17,6 +17,7 @@ import DashboardIcon from "@mui/icons-material/Dashboard";
 import LocalShippingIcon from "@mui/icons-material/LocalShipping";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
 import LogoutIcon from "@mui/icons-material/Logout";
+import EventNoteIcon from "@mui/icons-material/EventNote";
 import { useLocation, useNavigate } from "react-router-dom";
 import { clearAuth, getUser } from "../../utils/auth";
 
@@ -37,6 +38,11 @@ const navItems = [
     label: "Addresses",
     path: "/addresses",
     icon: <LocationOnIcon fontSize="small" />
+  },
+  {
+    label: "Appointments",
+    path: "/appointments",
+    icon: <EventNoteIcon fontSize="small" />
   }
 ];
 
@@ -45,7 +51,7 @@ function AppLayout({ title, children }) {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const user = getUser(); 
+  const user = getUser();
   const displayName =
     user?.first_name || user?.firstName || user?.name || "User";
 
@@ -68,7 +74,7 @@ function AppLayout({ title, children }) {
         color: "#E5E7EB"
       }}
     >
-
+      {/* Logo / title */}
       <Box sx={{ p: 2, borderBottom: "1px solid #111827" }}>
         <Typography
           variant="h6"
@@ -84,7 +90,7 @@ function AppLayout({ title, children }) {
         </Typography>
       </Box>
 
-
+      {/* Nav items */}
       <Box sx={{ flexGrow: 1, overflowY: "auto" }}>
         <List sx={{ mt: 1 }}>
           {navItems.map((item) => {
@@ -124,7 +130,7 @@ function AppLayout({ title, children }) {
         </List>
       </Box>
 
-
+      {/* Logout */}
       <Box sx={{ p: 1.5, borderTop: "1px solid #111827" }}>
         <ListItemButton
           onClick={handleLogout}
@@ -147,6 +153,7 @@ function AppLayout({ title, children }) {
 
   return (
     <Box sx={{ display: "flex", minHeight: "100vh", bgcolor: "#020617" }}>
+      {/* Top App Bar */}
       <AppBar
         position="fixed"
         sx={{
@@ -159,7 +166,7 @@ function AppLayout({ title, children }) {
         }}
       >
         <Toolbar>
-
+          {/* Menu button (mobile) */}
           <IconButton
             color="inherit"
             edge="start"
@@ -182,13 +189,13 @@ function AppLayout({ title, children }) {
         </Toolbar>
       </AppBar>
 
-
+      {/* Sidebar drawer */}
       <Box
         component="nav"
         sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}
         aria-label="navigation"
       >
-
+        {/* Mobile drawer */}
         <Drawer
           variant="temporary"
           open={mobileOpen}
@@ -206,6 +213,8 @@ function AppLayout({ title, children }) {
         >
           {drawer}
         </Drawer>
+
+        {/* Desktop drawer */}
         <Drawer
           variant="permanent"
           sx={{
@@ -221,6 +230,7 @@ function AppLayout({ title, children }) {
         </Drawer>
       </Box>
 
+      {/* Main content */}
       <Box
         component="main"
         sx={{
