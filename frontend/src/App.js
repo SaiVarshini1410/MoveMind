@@ -9,6 +9,7 @@ import AddressesPage from "./pages/AddressesPage";
 import RoomsPage from "./pages/RoomsPage";
 import BoxesPage from "./pages/BoxesPage";
 import ScanBoxPage from "./pages/ScanBoxPage";
+import AppointmentsPage from "./pages/AppointmentsPage";
 import { getToken } from "./utils/auth";
 
 function RequireAuth({ children }) {
@@ -78,6 +79,15 @@ function App() {
         element={
           <RequireAuth>
             <ScanBoxPage />
+          </RequireAuth>
+        }
+      />
+
+      <Route
+        path="/appointments"
+        element={
+          <RequireAuth>
+            <AppointmentsPage />
           </RequireAuth>
         }
       />
