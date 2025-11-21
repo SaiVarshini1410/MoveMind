@@ -66,7 +66,6 @@ export const deleteDocument = async (req, res) => {
     FROM documents d
     JOIN moves m ON m.id = d.move_id
     WHERE d.id = ? AND m.user_id = ?
-    LIMIT 1
   `;
   db.query(q, [docId, req.user.id], (err, result) => {
     if (err) return res.status(500).json({ error: err.message });

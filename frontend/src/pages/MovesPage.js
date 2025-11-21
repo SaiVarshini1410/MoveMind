@@ -1,3 +1,4 @@
+// src/pages/MovesPage.js
 import React, { useEffect, useState } from "react";
 import {
   Box,
@@ -23,6 +24,7 @@ import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
 import { useNavigate } from "react-router-dom";
+
 import AppLayout from "../components/layout/AppLayout";
 import apiClient from "../api/apiClient";
 
@@ -141,6 +143,12 @@ function MovesPage() {
       return;
     }
 
+    // Prevent using the same address for from/to
+    if (String(from_address_id) === String(to_address_id)) {
+      setDialogError("From and To addresses must be different.");
+      return;
+    }
+
     const payload = {
       title,
       move_date: move_date || null,
@@ -187,6 +195,14 @@ function MovesPage() {
         "Failed to delete move.";
       alert(msg);
     }
+  };
+
+  const handleOpenRooms = (move) => {
+    navigate(`/moves/${move.id}/rooms`);
+  };
+
+  const handleOpenDocuments = (move) => {
+    navigate(`/moves/${move.id}/documents`);
   };
 
   return (
@@ -259,8 +275,8 @@ function MovesPage() {
                 {moves.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={4} sx={{ color: "text.secondary" }}>
-                      You don&apos;t have any moves yet. Click &quot;New move&quot; to
-                      create one.
+                      You don&apos;t have any moves yet. Click &quot;New
+                      move&quot; to create one.
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -291,17 +307,20 @@ function MovesPage() {
                             gap: 1
                           }}
                         >
-                          {/* New Rooms button */}
                           <Button
                             size="small"
-                            variant="outlined"
-                            onClick={() =>
-                              navigate(`/moves/${move.id}/rooms`)
-                            }
+                            variant="text"
+                            onClick={() => handleOpenRooms(move)}
                           >
                             Rooms
                           </Button>
-
+                          <Button
+                            size="small"
+                            variant="text"
+                            onClick={() => handleOpenDocuments(move)}
+                          >
+                            Documents
+                          </Button>
                           <IconButton
                             size="small"
                             onClick={() => openEditDialog(move)}
@@ -398,24 +417,20 @@ function MovesPage() {
                 </MenuItem>
               ))}
             </TextField>
-            <TextField
-                select
-                label="To address"
-                name="to_address_id"
-                value={form.to_address_id}
-                onChange={handleFormChange}
-            >
-            {addresses
-                .filter(
-                (addr) => String(addr.id) !== String(form.from_address_id)
-                )
-                .map((addr) => (
-                <MenuItem key={addr.id} value={addr.id}>
-                    {addr.label} — {addr.line1}
-                </MenuItem>
-                ))}
-            </TextField>
 
+            <TextField
+              select
+              label="To address"
+              name="to_address_id"
+              value={form.to_address_id}
+              onChange={handleFormChange}
+            >
+              {addresses.map((addr) => (
+                <MenuItem key={addr.id} value={addr.id}>
+                  {addr.label} — {addr.line1}
+                </MenuItem>
+              ))}
+            </TextField>
           </Box>
         </DialogContent>
         <DialogActions>

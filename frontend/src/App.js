@@ -1,3 +1,4 @@
+// src/App.js
 import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 
@@ -10,6 +11,7 @@ import RoomsPage from "./pages/RoomsPage";
 import BoxesPage from "./pages/BoxesPage";
 import ScanBoxPage from "./pages/ScanBoxPage";
 import AppointmentsPage from "./pages/AppointmentsPage";
+import DocumentsPage from "./pages/DocumentsPage";
 import { getToken } from "./utils/auth";
 
 function RequireAuth({ children }) {
@@ -27,7 +29,6 @@ function App() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
-
 
       <Route
         path="/dashboard"
@@ -75,6 +76,15 @@ function App() {
       />
 
       <Route
+        path="/moves/:moveId/documents"
+        element={
+        <RequireAuth>
+          <DocumentsPage />
+        </RequireAuth>
+        }
+      />
+
+      <Route
         path="/scan/:labelCode"
         element={
           <RequireAuth>
@@ -91,7 +101,6 @@ function App() {
           </RequireAuth>
         }
       />
-
 
       <Route
         path="/"
