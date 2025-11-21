@@ -15,11 +15,7 @@ import {
   IconButton,
   Checkbox,
   FormControlLabel,
-  Chip,
-  List,
-  ListItem,
-  ListItemText,
-  Divider
+  Chip
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -69,19 +65,10 @@ function BoxesPage() {
   const [qrText, setQrText] = useState("");
   const [qrError, setQrError] = useState("");
 
-  const [itemsDialogOpen, setItemsDialogOpen] = useState(false);
-  const [itemsBox, setItemsBox] = useState(null);
-  const [itemsLoading, setItemsLoading] = useState(false);
-  const [itemsError, setItemsError] = useState("");
-  const [items, setItems] = useState([]);
 
-  const [itemForm, setItemForm] = useState({
-    name: "",
-    quantity: 1,
-    value: ""
-  });
-  const [itemSaving, setItemSaving] = useState(false);
-  const [itemFormError, setItemFormError] = useState("");
+  const [allCategories, setAllCategories] = useState([]); 
+
+  const [boxCategories, setBoxCategories] = useState({});
 
   const [form, setForm] = useState({
     label_code: "",
@@ -95,18 +82,37 @@ function BoxesPage() {
     setError("");
 
     try {
-      const [boxesRes, moveRes, roomsRes] = await Promise.all([
+      const [boxesRes, moveRes, roomsRes, categoriesRes] = await Promise.all([
         apiClient.get(`/rooms/${roomId}/boxes`),
         apiClient.get(`/moves/${moveId}`),
-        apiClient.get(`/moves/${moveId}/rooms`)
+        apiClient.get(`/moves/${moveId}/rooms`),
+        apiClient.get("/categories")
       ]);
 
-      setBoxes(boxesRes.data || []);
+      const boxesData = boxesRes.data || [];
+      setBoxes(boxesData);
       setMove(moveRes.data || null);
+      setAllCategories(categoriesRes.data || []);
 
       const rooms = roomsRes.data || [];
       const foundRoom = rooms.find((r) => String(r.id) === String(roomId));
       setRoom(foundRoom || null);
+
+
+      const catsMap = {};
+      await Promise.all(
+        boxesData.map(async (b) => {
+          try {
+            const res = await apiClient.get(`/boxes/${b.id}/categories`);
+            const list = res.data || [];
+            catsMap[b.id] = list.length > 0 ? list[0] : null;
+          } catch (e) {
+            console.error("Error loading categories for box", b.id, e);
+            catsMap[b.id] = null;
+          }
+        })
+      );
+      setBoxCategories(catsMap);
     } catch (err) {
       console.error("Error loading boxes/move/room:", err);
       const msg =
@@ -223,95 +229,8 @@ function BoxesPage() {
     }
   };
 
-
-  const loadItems = async (boxId) => {
-    setItemsLoading(true);
-    setItemsError("");
-    try {
-      const res = await apiClient.get(`/boxes/${boxId}/items`);
-      setItems(res.data || []);
-    } catch (err) {
-      console.error("Error loading items:", err);
-      const msg =
-        err.response?.data?.message ||
-        err.response?.data?.error ||
-        "Failed to load items.";
-      setItemsError(msg);
-    } finally {
-      setItemsLoading(false);
-    }
-  };
-
-  const handleOpenItemsDialog = async (box) => {
-    setItemsBox(box);
-    setItemsDialogOpen(true);
-    setItemFormError("");
-    setItemForm({ name: "", quantity: 1, value: "" });
-    await loadItems(box.id);
-  };
-
-  const handleCloseItemsDialog = () => {
-    if (itemSaving) return;
-    setItemsDialogOpen(false);
-    setItemsBox(null);
-    setItems([]);
-    setItemsError("");
-    setItemFormError("");
-  };
-
-  const handleItemFormChange = (e) => {
-    const { name, value } = e.target;
-    setItemForm((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleAddItem = async (e) => {
-    e.preventDefault();
-    setItemFormError("");
-
-    if (!itemForm.name.trim()) {
-      setItemFormError("Item name is required.");
-      return;
-    }
-
-    const payload = {
-      name: itemForm.name.trim(),
-      quantity:
-        itemForm.quantity !== "" ? Number(itemForm.quantity) || 1 : 1,
-      value: itemForm.value !== "" ? Number(itemForm.value) : null
-    };
-
-    setItemSaving(true);
-    try {
-      await apiClient.post(`/boxes/${itemsBox.id}/items`, payload);
-      await loadItems(itemsBox.id);
-      setItemForm({ name: "", quantity: 1, value: "" });
-    } catch (err) {
-      console.error("Error adding item:", err);
-      const msg =
-        err.response?.data?.message ||
-        err.response?.data?.error ||
-        "Failed to add item.";
-      setItemFormError(msg);
-    } finally {
-      setItemSaving(false);
-    }
-  };
-
-  const handleDeleteItem = async (item) => {
-    const ok = window.confirm(`Delete item "${item.name}" from this box?`);
-    if (!ok) return;
-
-    try {
-      await apiClient.delete(`/items/${item.id}`);
-      await loadItems(itemsBox.id);
-    } catch (err) {
-      console.error("Error deleting item:", err);
-      const msg =
-        err.response?.data?.message ||
-        err.response?.data?.error ||
-        "Failed to delete item.";
-      alert(msg);
-    }
+  const handleGoToItems = (box) => {
+    navigate(`/boxes/${box.id}/items`);
   };
 
 
@@ -362,9 +281,56 @@ function BoxesPage() {
     setQrError("");
   };
 
+  const handleCategoryChange = async (boxId, newValue) => {
+    const current = boxCategories[boxId] || null;
+    const newCatId = newValue;
+
+    try {
+      if (newCatId === "") {
+        if (current) {
+          await apiClient.delete(
+            `/boxes/${boxId}/categories/${current.id}`
+          );
+          setBoxCategories((prev) => ({ ...prev, [boxId]: null }));
+        }
+        return;
+      }
+
+
+      if (current && String(current.id) === String(newCatId)) {
+        return;
+      }
+
+
+      if (current) {
+        await apiClient.delete(
+          `/boxes/${boxId}/categories/${current.id}`
+        );
+      }
+
+
+      await apiClient.post(`/boxes/${boxId}/categories/${newCatId}`);
+
+      const catObj = allCategories.find(
+        (c) => String(c.id) === String(newCatId)
+      );
+
+      setBoxCategories((prev) => ({
+        ...prev,
+        [boxId]: catObj || null
+      }));
+    } catch (err) {
+      console.error("Error updating category for box:", err);
+      const msg =
+        err.response?.data?.message ||
+        err.response?.data?.error ||
+        "Failed to update category.";
+      alert(msg);
+    }
+  };
+
   return (
     <AppLayout title="Boxes">
-
       <Box
         sx={{
           mb: 3,
@@ -404,7 +370,6 @@ function BoxesPage() {
           </Button>
         </Box>
       </Box>
-
 
       {loading ? (
         <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
@@ -447,7 +412,7 @@ function BoxesPage() {
                     minHeight: 170
                   }}
                 >
-            
+
                   <Box
                     sx={{
                       display: "flex",
@@ -484,7 +449,7 @@ function BoxesPage() {
                     </Box>
                   </Box>
 
-        
+
                   <Typography
                     variant="body2"
                     sx={{ color: "text.secondary" }}
@@ -495,7 +460,6 @@ function BoxesPage() {
                       : "—"}
                   </Typography>
 
-             
                   <Box
                     sx={{
                       display: "flex",
@@ -507,7 +471,7 @@ function BoxesPage() {
                     <Button
                       size="small"
                       variant="outlined"
-                      onClick={() => handleOpenItemsDialog(box)}
+                      onClick={() => handleGoToItems(box)}
                     >
                       ITEMS
                     </Button>
@@ -521,28 +485,61 @@ function BoxesPage() {
                     </Button>
                   </Box>
 
-
                   <Box
                     sx={{
                       display: "flex",
-                      justifyContent: "flex-start",
+                      justifyContent: "space-between",
                       alignItems: "center",
                       mt: 0.5
                     }}
                   >
-                    <IconButton
+                    <TextField
+                      select
                       size="small"
-                      onClick={() => openEditDialog(box)}
+                      value={
+                        boxCategories[box.id]?.id
+                          ? String(boxCategories[box.id].id)
+                          : ""
+                      }
+                      onChange={(e) =>
+                        handleCategoryChange(box.id, e.target.value)
+                      }
+                      SelectProps={{
+                        displayEmpty: true
+                      }}
+                      sx={{
+                        maxWidth: 180,
+                        "& .MuiSelect-select": {
+                          py: 0.5,
+                          fontSize: 12
+                        }
+                      }}
                     >
-                      <EditIcon fontSize="small" />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      color="error"
-                      onClick={() => handleDelete(box)}
-                    >
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
+                      <MenuItem value="">
+                        <em>Add category...</em>
+                      </MenuItem>
+                      {allCategories.map((cat) => (
+                        <MenuItem key={cat.id} value={String(cat.id)}>
+                          {cat.name}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+
+                    <Box>
+                      <IconButton
+                        size="small"
+                        onClick={() => openEditDialog(box)}
+                      >
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                      <IconButton
+                        size="small"
+                        color="error"
+                        onClick={() => handleDelete(box)}
+                      >
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </Box>
                   </Box>
                 </Paper>
               ))}
@@ -550,7 +547,6 @@ function BoxesPage() {
           )}
         </Box>
       )}
-
 
       <Dialog
         open={dialogOpen}
@@ -630,7 +626,6 @@ function BoxesPage() {
         </DialogActions>
       </Dialog>
 
-
       <Dialog
         open={qrDialogOpen}
         onClose={handleCloseQrDialog}
@@ -671,149 +666,6 @@ function BoxesPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseQrDialog}>Close</Button>
-        </DialogActions>
-      </Dialog>
-
-
-      <Dialog
-        open={itemsDialogOpen}
-        onClose={handleCloseItemsDialog}
-        fullWidth
-        maxWidth="sm"
-      >
-        <DialogTitle>
-          {itemsBox ? `Items in box: ${itemsBox.label_code}` : "Box items"}
-        </DialogTitle>
-        <DialogContent dividers>
-          {itemsError && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {itemsError}
-            </Alert>
-          )}
-
-          {itemsLoading ? (
-            <Box sx={{ display: "flex", justifyContent: "center", my: 3 }}>
-              <CircularProgress size={28} />
-            </Box>
-          ) : (
-            <>
-              {items.length === 0 ? (
-                <Typography
-                  variant="body2"
-                  sx={{ mb: 2, color: "text.secondary" }}
-                >
-                  No items in this box yet. Add your first item below.
-                </Typography>
-              ) : (
-                <Paper
-                  variant="outlined"
-                  sx={{
-                    mb: 2,
-                    bgcolor: "#020617",
-                    borderRadius: 2,
-                    borderColor: "#111827"
-                  }}
-                >
-                  <List dense disablePadding>
-                    {items.map((item, index) => (
-                      <React.Fragment key={item.id}>
-                        {index !== 0 && <Divider component="li" />}
-                        <ListItem
-                          secondaryAction={
-                            <IconButton
-                              edge="end"
-                              size="small"
-                              color="error"
-                              onClick={() => handleDeleteItem(item)}
-                            >
-                              <DeleteIcon fontSize="small" />
-                            </IconButton>
-                          }
-                        >
-                          <ListItemText
-                            primary={item.name}
-                            primaryTypographyProps={{
-                              sx: { fontWeight: 500, color: "#F9FAFB" }
-                            }}
-                            secondary={
-                              <>
-                                Qty: {item.quantity ?? 1}
-                                {item.value != null
-                                  ? ` • Value: ${item.value}`
-                                  : ""}
-                              </>
-                            }
-                          />
-                        </ListItem>
-                      </React.Fragment>
-                    ))}
-                  </List>
-                </Paper>
-              )}
-
-              <Box
-                component="form"
-                onSubmit={handleAddItem}
-                sx={{
-                  mt: 1,
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 1.5
-                }}
-              >
-                {itemFormError && (
-                  <Alert severity="error">{itemFormError}</Alert>
-                )}
-
-                <TextField
-                  label="Item name *"
-                  name="name"
-                  value={itemForm.name}
-                  onChange={handleItemFormChange}
-                  fullWidth
-                />
-
-                <Box
-                  sx={{
-                    display: "flex",
-                    gap: 1,
-                    flexWrap: "wrap"
-                  }}
-                >
-                  <TextField
-                    label="Quantity"
-                    name="quantity"
-                    type="number"
-                    value={itemForm.quantity}
-                    onChange={handleItemFormChange}
-                    sx={{ width: 120 }}
-                  />
-                  <TextField
-                    label="Value (optional)"
-                    name="value"
-                    type="number"
-                    value={itemForm.value}
-                    onChange={handleItemFormChange}
-                    sx={{ width: 160 }}
-                  />
-                </Box>
-
-                <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
-                  <Button
-                    type="submit"
-                    variant="contained"
-                    size="small"
-                    disabled={itemSaving || !itemsBox}
-                  >
-                    {itemSaving ? "Adding..." : "Add item"}
-                  </Button>
-                </Box>
-              </Box>
-            </>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseItemsDialog}>Close</Button>
         </DialogActions>
       </Dialog>
     </AppLayout>

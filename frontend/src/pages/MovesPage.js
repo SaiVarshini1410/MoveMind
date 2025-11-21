@@ -398,20 +398,24 @@ function MovesPage() {
                 </MenuItem>
               ))}
             </TextField>
-
             <TextField
-              select
-              label="To address"
-              name="to_address_id"
-              value={form.to_address_id}
-              onChange={handleFormChange}
+                select
+                label="To address"
+                name="to_address_id"
+                value={form.to_address_id}
+                onChange={handleFormChange}
             >
-              {addresses.map((addr) => (
+            {addresses
+                .filter(
+                (addr) => String(addr.id) !== String(form.from_address_id)
+                )
+                .map((addr) => (
                 <MenuItem key={addr.id} value={addr.id}>
-                  {addr.label} — {addr.line1}
+                    {addr.label} — {addr.line1}
                 </MenuItem>
-              ))}
+                ))}
             </TextField>
+
           </Box>
         </DialogContent>
         <DialogActions>
