@@ -217,7 +217,6 @@ export const deleteMoveUtility = (req, res) => {
     FROM move_utilities mu
     JOIN moves m ON m.id = mu.move_id
     WHERE mu.id = ? AND m.user_id = ?
-    LIMIT 1
   `;
   db.query(q, [id, req.user.id], (err, result) => {
     if (err) return res.status(500).json({ error: err.message });

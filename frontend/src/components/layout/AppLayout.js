@@ -17,6 +17,7 @@ import LocalShippingIcon from "@mui/icons-material/LocalShipping";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
 import LogoutIcon from "@mui/icons-material/Logout";
 import EventNoteIcon from "@mui/icons-material/EventNote";
+import MiscellaneousServicesIcon from "@mui/icons-material/MiscellaneousServices";
 import { useLocation, useNavigate } from "react-router-dom";
 import { clearAuth, getUser } from "../../utils/auth";
 
@@ -42,6 +43,11 @@ const navItems = [
     label: "Appointments",
     path: "/appointments",
     icon: <EventNoteIcon fontSize="small" />
+  },
+  {
+    label: "Utilities",
+    path: "/utilities",
+    icon: <MiscellaneousServicesIcon fontSize="small" />
   }
 ];
 
@@ -73,7 +79,6 @@ function AppLayout({ title, children }) {
         color: "#E5E7EB"
       }}
     >
-
       <Box sx={{ p: 2, borderBottom: "1px solid #111827" }}>
         <Typography
           variant="h6"
@@ -88,7 +93,6 @@ function AppLayout({ title, children }) {
           Plan your next move
         </Typography>
       </Box>
-
 
       <Box sx={{ flexGrow: 1, overflowY: "auto" }}>
         <List sx={{ mt: 1 }}>
@@ -128,7 +132,6 @@ function AppLayout({ title, children }) {
           })}
         </List>
       </Box>
-
 
       <Box sx={{ p: 1.5, borderTop: "1px solid #111827" }}>
         <ListItemButton
@@ -191,7 +194,6 @@ function AppLayout({ title, children }) {
         sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}
         aria-label="navigation"
       >
-
         <Drawer
           variant="temporary"
           open={mobileOpen}
@@ -210,7 +212,6 @@ function AppLayout({ title, children }) {
           {drawer}
         </Drawer>
 
-
         <Drawer
           variant="permanent"
           sx={{
@@ -225,7 +226,6 @@ function AppLayout({ title, children }) {
           {drawer}
         </Drawer>
       </Box>
-
 
       <Box
         component="main"

@@ -88,7 +88,7 @@ export const updateUtility = (req, res) => {
 export const deleteUtility = (req, res) => {
   const { utilityId } = req.params;
 
-  const q = "DELETE FROM utilities WHERE id = ? LIMIT 1";
+  const q = "DELETE FROM utilities WHERE id = ?";
   db.query(q, [utilityId], (err, result) => {
     if (err) return res.status(500).json({ error: err.message });
     if (!result.affectedRows) {
