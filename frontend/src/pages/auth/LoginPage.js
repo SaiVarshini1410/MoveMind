@@ -66,13 +66,13 @@ function LoginPage() {
       >
         <Box sx={{ maxWidth: 420 }}>
           <Typography variant="h3" sx={{ mb: 2 }}>
-            📦 MoveMind
+            MoveMind
           </Typography>
           <Typography variant="h5" sx={{ mb: 2 }}>
             Organize your move without chaos.
           </Typography>
           <Typography variant="body1" sx={{ opacity: 0.85 }}>
-            Track rooms, boxes, appointments, utilities, and documents — all in
+            Track rooms, boxes, appointments, utilities, and documents - all in
             one clean dashboard backed by a solid database design.
           </Typography>
         </Box>

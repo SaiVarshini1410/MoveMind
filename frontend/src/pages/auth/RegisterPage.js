@@ -65,7 +65,7 @@ function RegisterPage() {
       >
         <Box sx={{ maxWidth: 420 }}>
           <Typography variant="h3" sx={{ mb: 2 }}>
-            📦 MoveMind
+            MoveMind
           </Typography>
           <Typography variant="h5" sx={{ mb: 2 }}>
             Plan your move like a pro.
