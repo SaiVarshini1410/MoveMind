@@ -16,7 +16,6 @@ function DashboardPage() {
   const [error, setError] = useState("");
 
   const [moves, setMoves] = useState([]);
-  const [appointments, setAppointments] = useState([]);
 
   const todayStr = new Date().toISOString().slice(0, 10);
 
@@ -36,13 +35,6 @@ function DashboardPage() {
       setError(msg);
     }
 
-    try {
-      const apptRes = await apiClient.get("/appointments");
-      setAppointments(apptRes.data || []);
-    } catch (err) {
-      console.error("Error loading appointments:", err);
-    }
-
     setLoading(false);
   };
 
@@ -53,15 +45,6 @@ function DashboardPage() {
   const totalMoves = moves.length;
   const activeMoves = moves.filter((m) => m.status !== "done").length;
   const completedMoves = moves.filter((m) => m.status === "done").length;
-
-  const upcomingAppointmentsCount = appointments.filter((a) => {
-    if (!a.apt_date) return false;
-    return a.status === "scheduled" && a.apt_date >= todayStr;
-  }).length;
-
-  const todayAppointments = appointments.filter(
-    (a) => a.apt_date === todayStr
-  );
 
   const nextMove = (() => {
     const movesWithDate = moves.filter((m) => m.move_date);
@@ -146,7 +129,7 @@ function DashboardPage() {
                 Dashboard
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Overview of your moves and appointments at a glance.
+                Overview of your moves at a glance.
               </Typography>
 
               {nextMove ? (
@@ -199,7 +182,7 @@ function DashboardPage() {
                 gridTemplateColumns: {
                   xs: "1fr",
                   sm: "repeat(2, minmax(0, 1fr))",
-                  md: "repeat(4, minmax(0, 1fr))"
+                  md: "repeat(3, minmax(0, 1fr))"
                 },
                 gap: 2
               }}
@@ -261,25 +244,6 @@ function DashboardPage() {
                   {completedMoves}
                 </Typography>
               </Paper>
-              <Paper
-                sx={{
-                  p: 2.5,
-                  borderRadius: 3,
-                  bgcolor: "#020617",
-                  border: "1px solid #111827"
-                }}
-              >
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{ mb: 1 }}
-                >
-                  Upcoming appointments
-                </Typography>
-                <Typography variant="h5" sx={{ fontWeight: 700 }}>
-                  {upcomingAppointmentsCount}
-                </Typography>
-              </Paper>
             </Box>
 
             <Box
@@ -287,7 +251,7 @@ function DashboardPage() {
                 display: "grid",
                 gridTemplateColumns: {
                   xs: "1fr",
-                  md: "2fr 1fr"
+                  md: "1fr"
                 },
                 gap: 2.5,
                 mb: 4
@@ -356,73 +320,6 @@ function DashboardPage() {
                     ))
                   )}
                 </Box>
-              </Paper>
-
-              <Paper
-                sx={{
-                  p: 3,
-                  borderRadius: 3,
-                  bgcolor: "#020617",
-                  border: "1px solid #111827",
-                  minHeight: 220,
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 1.5
-                }}
-              >
-                <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  Today
-                </Typography>
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{ mb: 2 }}
-                >
-                  {todayStr}
-                </Typography>
-
-                {todayAppointments.length === 0 ? (
-                  <Typography variant="body2" color="text.secondary">
-                    No appointments scheduled for today.
-                  </Typography>
-                ) : (
-                  <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
-                    {todayAppointments.map((a) => (
-                      <Box
-                        key={a.id}
-                        sx={{
-                          p: 1.5,
-                          borderRadius: 2,
-                          bgcolor: "#020617",
-                          border: "1px solid #111827"
-                        }}
-                      >
-                        <Typography
-                          variant="body2"
-                          sx={{ fontWeight: 600, color: "#E5E7EB" }}
-                        >
-                          {a.title}
-                        </Typography>
-                        <Typography
-                          variant="caption"
-                          color="text.secondary"
-                          sx={{ display: "block", mt: 0.5 }}
-                        >
-                          Time: {a.apt_time ? a.apt_time.substring(0, 5) : "—"}
-                        </Typography>
-                        {a.person && (
-                          <Typography
-                            variant="caption"
-                            color="text.secondary"
-                            sx={{ display: "block", mt: 0.5 }}
-                          >
-                            With: {a.person}
-                          </Typography>
-                        )}
-                      </Box>
-                    ))}
-                  </Box>
-                )}
               </Paper>
             </Box>
           </>
