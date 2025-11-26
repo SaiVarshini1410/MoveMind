@@ -1,27 +1,6 @@
 -- ============================================
 -- Move Utility Procedures
 -- ============================================
-
--- Check if user owns a move
-DELIMITER $$
-
-CREATE PROCEDURE sp_check_user_owns_move(
-  IN p_move_id INT,
-  IN p_user_id INT,
-  OUT p_owns BOOLEAN
-)
-BEGIN
-  DECLARE move_count INT;
-  
-  SELECT COUNT(*) INTO move_count
-  FROM moves
-  WHERE id = p_move_id AND user_id = p_user_id;
-  
-  SET p_owns = (move_count > 0);
-END$$
-
-DELIMITER ;
-
 -- Check if a utility exists
 DELIMITER $$
 
