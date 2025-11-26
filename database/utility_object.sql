@@ -1,151 +1,173 @@
-USE movemind_db;
-
--- Utilities : Procedures
 -- ============================================
--- PROCEDURES FOR UTILITIES
+-- Utility Procedures
 -- ============================================
-DROP PROCEDURE IF EXISTS list_utilities;
-DROP PROCEDURE IF EXISTS create_utility;
-DROP PROCEDURE IF EXISTS update_utility;
-DROP PROCEDURE IF EXISTS delete_utility;
 
-DELIMITER //
+-- List all utilities
+DELIMITER $$
 
--- 1. Listing all utilities
-CREATE PROCEDURE list_utilities()
+CREATE PROCEDURE sp_list_utilities()
 BEGIN
     SELECT id, provider_name, type
-    FROM Utilities
+    FROM utilities
     ORDER BY provider_name ASC;
-END //
-
--- 2. Create a new utility
-DELIMITER //
-CREATE PROCEDURE create_utility(
-    IN p_provider_name VARCHAR(100),
-    IN p_type ENUM('electricity','gas','water','internet','trash','other')
-)
-BEGIN
-    INSERT INTO Utilities (provider_name, type)
-    VALUES (p_provider_name, p_type);
-    
-    SELECT LAST_INSERT_ID() as id;
-END //
-
--- 3. Update a utility
-DELIMITER //
-CREATE PROCEDURE update_utility(
-    IN p_utility_id INT,
-    IN p_provider_name VARCHAR(100),
-    IN p_type ENUM('electricity','gas','water','internet','trash','other')
-)
-BEGIN
-    DECLARE v_affected_rows INT DEFAULT 0;
-    
-    -- Update only non-null fields
-    UPDATE Utilities
-    SET 
-        provider_name = COALESCE(p_provider_name, provider_name),
-        type = COALESCE(p_type, type)
-    WHERE id = p_utility_id
-    LIMIT 1;
-    
-    SET v_affected_rows = ROW_COUNT();
-    
-    -- Return affected rows count
-    SELECT v_affected_rows as affected_rows;
-END //
-
--- 4. Delete a utility
-DELIMITER //
-CREATE PROCEDURE delete_utility(
-    IN p_utility_id INT
-)
-BEGIN
-    DECLARE v_affected_rows INT DEFAULT 0;
-    
-    DELETE FROM Utilities 
-    WHERE id = p_utility_id;
-    
-    SET v_affected_rows = ROW_COUNT();
-    
-    -- Return affected rows count
-    SELECT v_affected_rows as affected_rows;
-END //
+END$$
 
 DELIMITER ;
 
--- Utilities : Triggers
+-- Create utility
+DELIMITER $$
+
+CREATE PROCEDURE sp_create_utility(
+    IN p_provider_name VARCHAR(100),
+    IN p_type ENUM('electricity','gas','water','internet','trash','other'),
+    OUT p_utility_id INT,
+    OUT p_message VARCHAR(100)
+)
+BEGIN
+    INSERT INTO utilities (provider_name, type)
+    VALUES (p_provider_name, p_type);
+    
+    SET p_utility_id = LAST_INSERT_ID();
+    SET p_message = 'Utility created';
+END$$
+
+DELIMITER ;
+
+-- Update utility (supports partial updates)
+DELIMITER $$
+
+CREATE PROCEDURE sp_update_utility(
+    IN p_utility_id INT,
+    IN p_provider_name VARCHAR(100),
+    IN p_type VARCHAR(20),
+    OUT p_success BOOLEAN,
+    OUT p_message VARCHAR(100)
+)
+BEGIN
+    DECLARE utility_exists INT;
+    DECLARE update_query VARCHAR(500);
+    
+    -- Check if utility exists
+    SELECT COUNT(*) INTO utility_exists
+    FROM utilities
+    WHERE id = p_utility_id;
+    
+    IF utility_exists = 0 THEN
+        SET p_success = FALSE;
+        SET p_message = 'Utility not found';
+    ELSE
+        -- Update only provided fields
+        IF p_provider_name IS NOT NULL AND p_type IS NOT NULL THEN
+            UPDATE utilities
+            SET provider_name = p_provider_name, type = p_type
+            WHERE id = p_utility_id;
+        ELSEIF p_provider_name IS NOT NULL THEN
+            UPDATE utilities
+            SET provider_name = p_provider_name
+            WHERE id = p_utility_id;
+        ELSEIF p_type IS NOT NULL THEN
+            UPDATE utilities
+            SET type = p_type
+            WHERE id = p_utility_id;
+        END IF;
+        
+        SET p_success = TRUE;
+        SET p_message = 'Utility updated';
+    END IF;
+END$$
+
+DELIMITER ;
+
+-- Delete utility
+DELIMITER $$
+
+CREATE PROCEDURE sp_delete_utility(
+    IN p_utility_id INT,
+    OUT p_success BOOLEAN,
+    OUT p_message VARCHAR(100)
+)
+BEGIN
+    DECLARE utility_exists INT;
+    
+    SELECT COUNT(*) INTO utility_exists
+    FROM utilities
+    WHERE id = p_utility_id;
+    
+    IF utility_exists = 0 THEN
+        SET p_success = FALSE;
+        SET p_message = 'Utility not found';
+    ELSE
+        DELETE FROM utilities 
+        WHERE id = p_utility_id;
+        
+        SET p_success = TRUE;
+        SET p_message = 'Utility deleted';
+    END IF;
+END$$
+
+DELIMITER ;
 
 -- ============================================
--- TRIGGERS FOR UTILITIES
+-- Utility Triggers
 -- ============================================
 
-DROP TRIGGER IF EXISTS trg_before_utility_insert;
-DROP TRIGGER IF EXISTS trg_before_utility_update;
-DROP TRIGGER IF EXISTS trg_before_utility_delete;
+-- Validate on INSERT
+DROP TRIGGER IF EXISTS trg_before_insert_utility;
 
-DELIMITER //
+DELIMITER $$
 
--- TRIGGER 1: Validating and cleaning data BEFORE INSERT
-
-CREATE TRIGGER trg_before_utility_insert
-BEFORE INSERT ON Utilities
+CREATE TRIGGER trg_before_insert_utility
+BEFORE INSERT ON utilities
 FOR EACH ROW
 BEGIN
-    -- Automatically trim whitespace from provider name
     SET NEW.provider_name = TRIM(NEW.provider_name);
     
-    -- Prevent empty or whitespace-only provider names
-    IF LENGTH(NEW.provider_name) = 0 THEN
+    IF NEW.provider_name = '' THEN
         SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = 'Provider name cannot be empty';
     END IF;
-    
-    
-END //
+END$$
 
+DELIMITER ;
 
--- TRIGGER 2: Validate and clean data BEFORE UPDATE
-DELIMITER //
-CREATE TRIGGER trg_before_utility_update
-BEFORE UPDATE ON Utilities
+-- Validate on UPDATE
+DROP TRIGGER IF EXISTS trg_before_update_utility;
+
+DELIMITER $$
+
+CREATE TRIGGER trg_before_update_utility
+BEFORE UPDATE ON utilities
 FOR EACH ROW
 BEGIN
-    -- Automatically trims the whitespace from provider name
     SET NEW.provider_name = TRIM(NEW.provider_name);
     
-    -- Prevents empty or whitespace-only provider names
-    IF LENGTH(NEW.provider_name) = 0 THEN
+    IF NEW.provider_name = '' THEN
         SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = 'Provider name cannot be empty';
     END IF;
-END //
+END$$
 
+DELIMITER ;
 
--- TRIGGER 3: Preventing the delete utilities in use
+-- Prevent deleting utilities in use
+DROP TRIGGER IF EXISTS trg_before_delete_utility;
 
-DELIMITER //
-CREATE TRIGGER trg_before_utility_delete
-BEFORE DELETE ON Utilities
+DELIMITER $$
+
+CREATE TRIGGER trg_before_delete_utility
+BEFORE DELETE ON utilities
 FOR EACH ROW
 BEGIN
     DECLARE usage_count INT;
     
-    -- Check if this utility is referenced in move_utilities table
     SELECT COUNT(*) INTO usage_count
     FROM move_utilities
     WHERE utility_id = OLD.id;
     
-    -- If utility is being used, prevent deletion
     IF usage_count > 0 THEN
         SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = 'Cannot delete utility: it is currently assigned to one or more moves';
     END IF;
-END //
+END$$
 
-
-
-
-
-
+DELIMITER ;
