@@ -1,12 +1,20 @@
 import { db } from "../db.js";
 
-
 export const listAddresses = (req, res) => {
   const q = `
-    SELECT *
-    FROM addresses
-    WHERE user_id = ?
-    ORDER BY id DESC
+    SELECT
+      a.id,
+      ua.label,
+      a.line1,
+      a.line2,
+      a.city,
+      a.state,
+      a.postal_code,
+      a.country
+    FROM user_addresses ua
+    JOIN addresses a ON a.id = ua.address_id
+    WHERE ua.user_id = ?
+    ORDER BY a.id DESC
   `;
 
   db.query(q, [req.user.id], (err, rows) => {
@@ -14,7 +22,6 @@ export const listAddresses = (req, res) => {
     res.json(rows);
   });
 };
-
 
 export const createAddress = (req, res) => {
   const {
@@ -30,25 +37,90 @@ export const createAddress = (req, res) => {
   if (!label || !line1 || !city || !state || !postal_code || !country) {
     return res
       .status(400)
-      .json({ message: "label, line1, city, state, postal_code, country are required" });
+      .json({
+        message:
+          "label, line1, city, state, postal_code, country are required"
+      });
   }
 
-  const q = `
-    INSERT INTO addresses
-      (user_id, label, line1, line2, city, state, postal_code, country)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  const normalizedLine2 = line2 || null;
+
+  const findAddressQuery = `
+    SELECT id
+    FROM addresses
+    WHERE line1 = ?
+      AND city = ?
+      AND state = ?
+      AND postal_code = ?
+      AND country = ?
+      AND (
+        (line2 IS NULL AND ? IS NULL) OR
+        (line2 = ?)
+      )
+    LIMIT 1
   `;
 
   db.query(
-    q,
-    [req.user.id, label, line1, line2 || null, city, state, postal_code, country],
-    (err, result) => {
+    findAddressQuery,
+    [line1, city, state, postal_code, country, normalizedLine2, normalizedLine2],
+    (err, rows) => {
       if (err) return res.status(500).json({ error: err.message });
 
-      res.status(201).json({
-        id: result.insertId,
-        message: "Address created"
-      });
+      const handleUserAddressLink = (addressId) => {
+        const insertUserAddressQuery = `
+          INSERT INTO user_addresses (user_id, address_id, label)
+          VALUES (?, ?, ?)
+        `;
+
+        db.query(
+          insertUserAddressQuery,
+          [req.user.id, addressId, label],
+          (linkErr) => {
+            if (linkErr) {
+              if (linkErr.code === "ER_DUP_ENTRY") {
+                return res
+                  .status(400)
+                  .json({ message: "You already saved this address." });
+              }
+              return res.status(500).json({ error: linkErr.message });
+            }
+
+            res.status(201).json({
+              id: addressId,
+              message: "Address created"
+            });
+          }
+        );
+      };
+
+      if (rows.length > 0) {
+        const addressId = rows[0].id;
+        return handleUserAddressLink(addressId);
+      }
+
+      const insertAddressQuery = `
+        INSERT INTO addresses
+          (line1, line2, city, state, postal_code, country)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `;
+
+      db.query(
+        insertAddressQuery,
+        [line1, normalizedLine2, city, state, postal_code, country],
+        (insertErr, insertResult) => {
+          if (insertErr) {
+            if (insertErr.code === "ER_DUP_ENTRY") {
+              return res
+                .status(400)
+                .json({ message: "This address already exists." });
+            }
+            return res.status(500).json({ error: insertErr.message });
+          }
+
+          const newAddressId = insertResult.insertId;
+          handleUserAddressLink(newAddressId);
+        }
+      );
     }
   );
 };

@@ -144,7 +144,6 @@ export const getAppointment = (req, res) => {
     FROM appointments a
     JOIN moves m ON m.id = a.move_id
     WHERE a.id = ? AND m.user_id = ?
-    LIMIT 1
   `;
   db.query(q, [appointmentId, req.user.id], (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -179,7 +178,6 @@ export const updateAppointment = (req, res) => {
     FROM appointments a
     JOIN moves m ON m.id = a.move_id
     WHERE a.id = ? AND m.user_id = ?
-    LIMIT 1
   `;
   db.query(check, [appointmentId, req.user.id], (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -207,7 +205,6 @@ export const updateAppointment = (req, res) => {
       UPDATE appointments
       SET ${fields.join(", ")}
       WHERE id = ?
-      LIMIT 1
     `;
     params.push(appointmentId);
 
@@ -227,7 +224,6 @@ export const deleteAppointment = (req, res) => {
     FROM appointments a
     JOIN moves m ON m.id = a.move_id
     WHERE a.id = ? AND m.user_id = ?
-    LIMIT 1
   `;
   db.query(q, [appointmentId, req.user.id], (err, result) => {
     if (err) return res.status(500).json({ error: err.message });

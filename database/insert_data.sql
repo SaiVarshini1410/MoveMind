@@ -13,37 +13,37 @@ INSERT INTO Users (first_name, last_name, email, password) VALUES
 -- ========================================
 -- Addresses Table
 -- ========================================
-INSERT INTO addresses (label, street, city, state, postal_code, country) VALUES
-('Home', '123 Main St', 'Boston', 'MA', '02115', 'USA'),
-('Apartment', '456 Oak Ave', 'Cambridge', 'MA', '02139', 'USA'),
-('Condo', '789 Pine Rd', 'Brookline', 'MA', '02445', 'USA'),
-('House', '321 Elm Street', 'Somerville', 'MA', '02143', 'USA'),
-('Apartment', '654 Maple Dr', 'Newton', 'MA', '02458', 'USA'),
-('Home', '987 Cedar Ln', 'Watertown', 'MA', '02472', 'USA'),
-('Apartment', '147 Birch Ave', 'Arlington', 'MA', '02474', 'USA'),
-('Condo', '258 Willow St', 'Medford', 'MA', '02155', 'USA'),
-('House', '369 Spruce Ct', 'Quincy', 'MA', '02169', 'USA'),
-('Apartment', '741 Ash Blvd', 'Waltham', 'MA', '02451', 'USA'),
-('Home', '852 Poplar Way', 'Malden', 'MA', '02148', 'USA'),
-('Apartment', '963 Cherry Ln', 'Revere', 'MA', '02151', 'USA'),
-('House', '159 Magnolia Dr', 'Belmont', 'MA', '02478', 'USA'),
-('Home', '357 Sycamore St', 'Lexington', 'MA', '02420', 'USA'),
-('Apartment', '486 Redwood Pl', 'Needham', 'MA', '02492', 'USA');
+INSERT INTO addresses (line1, line2, city, state, postal_code, country) VALUES
+('123 Main St', NULL, 'Boston', 'MA', '02115', 'USA'),
+('456 Oak Ave', NULL, 'Cambridge', 'MA', '02139', 'USA'),
+('789 Pine Rd', NULL, 'Brookline', 'MA', '02445', 'USA'),
+('321 Elm Street', NULL, 'Somerville', 'MA', '02143', 'USA'),
+('654 Maple Dr', NULL, 'Newton', 'MA', '02458', 'USA'),
+('987 Cedar Ln', NULL, 'Watertown', 'MA', '02472', 'USA'),
+('147 Birch Ave', NULL, 'Arlington', 'MA', '02474', 'USA'),
+('258 Willow St', NULL, 'Medford', 'MA', '02155', 'USA'),
+('369 Spruce Ct', NULL, 'Quincy', 'MA', '02169', 'USA'),
+('741 Ash Blvd', NULL, 'Waltham', 'MA', '02451', 'USA'),
+('852 Poplar Way', NULL, 'Malden', 'MA', '02148', 'USA'),
+('963 Cherry Ln', NULL, 'Revere', 'MA', '02151', 'USA'),
+('159 Magnolia Dr', NULL, 'Belmont', 'MA', '02478', 'USA'),
+('357 Sycamore St', NULL, 'Lexington', 'MA', '02420', 'USA'),
+('486 Redwood Pl', NULL, 'Needham', 'MA', '02492', 'USA');
 
 -- ========================================
 -- User_Addresses Junction Table
 -- ========================================
-INSERT INTO user_addresses (user_id, address_id) VALUES
+INSERT INTO user_addresses (user_id, address_id, label) VALUES
 -- John's addresses
-(1, 1), (1, 2),
+(1, 1, 'Home'), (1, 2, 'Apartment'),
 -- Jane's addresses
-(2, 4), (2, 5), (2, 6),
+(2, 4, 'House'), (2, 5, 'Apartment'), (2, 6, 'Home'),
 -- Mike's addresses
-(3, 7), (3, 9),
+(3, 7, 'Apartment'), (3, 9, 'House'),
 -- Sarah's addresses
-(4, 10), (4, 11),
+(4, 10, 'Apartment'), (4, 11, 'Home'),
 -- Tom's addresses
-(5, 12), (5, 14);
+(5, 12, 'Apartment'), (5, 14, 'Home');
 
 -- ========================================
 -- Categories
@@ -112,202 +112,202 @@ INSERT INTO Moves (user_id, title, move_date, status, from_address_id, to_addres
 -- Rooms - IMPORTANT: Manual ID assignment for weak entity
 -- ========================================
 -- MOVE 1: John - Moving to Cambridge (packing)
-INSERT INTO Rooms (id, name, floor, move_id) VALUES
-(1, 'Living Room', 1, 1),
-(2, 'Kitchen', 1, 1),
-(3, 'Dining Room', 1, 1),
-(4, 'Master Bedroom', 2, 1),
-(5, 'Guest Bedroom', 2, 1),
-(6, 'Home Office', 2, 1),
-(7, 'Bathroom 1', 1, 1),
-(8, 'Bathroom 2', 2, 1);
+INSERT INTO Rooms (name, floor, move_id) VALUES
+('Living Room', 1, 1),
+('Kitchen', 1, 1),
+('Dining Room', 1, 1),
+('Master Bedroom', 2, 1),
+('Guest Bedroom', 2, 1),
+('Home Office', 2, 1),
+('Bathroom 1', 1, 1),
+('Bathroom 2', 2, 1);
 
 -- MOVE 2: Jane - Upgrading to Bigger Place (in_transit)
-INSERT INTO Rooms (id, name, floor, move_id) VALUES
-(9, 'Living Room', 1, 2),
-(10, 'Kitchen', 1, 2),
-(11, 'Dining Room', 1, 2),
-(12, 'Master Bedroom', 2, 2),
-(13, 'Bedroom 2', 2, 2),
-(14, 'Home Office', 2, 2),
-(15, 'Bathroom', 1, 2);
+INSERT INTO Rooms (name, floor, move_id) VALUES
+('Living Room', 1, 2),
+('Kitchen', 1, 2),
+('Dining Room', 1, 2),
+('Master Bedroom', 2, 2),
+('Bedroom 2', 2, 2),
+('Home Office', 2, 2),
+('Bathroom', 1, 2);
 
 -- MOVE 3: Jane - First Move to Boston (done)
-INSERT INTO Rooms (id, name, floor, move_id) VALUES
-(16, 'Living Room', 1, 3),
-(17, 'Bedroom', 1, 3),
-(18, 'Kitchen', 1, 3);
+INSERT INTO Rooms (name, floor, move_id) VALUES
+('Living Room', 1, 3),
+('Bedroom', 1, 3),
+('Kitchen', 1, 3);
 
 -- MOVE 4: Mike - Downtown to Suburbs (done)
-INSERT INTO Rooms (id, name, floor, move_id) VALUES
-(19, 'Living Room', 1, 4),
-(20, 'Kitchen', 1, 4),
-(21, 'Bedroom', 2, 4),
-(22, 'Office', 2, 4);
+INSERT INTO Rooms (name, floor, move_id) VALUES
+('Living Room', 1, 4),
+('Kitchen', 1, 4),
+('Bedroom', 2, 4),
+('Office', 2, 4);
 
 -- MOVE 5: Sarah - First Home Purchase (done)
-INSERT INTO Rooms (id, name, floor, move_id) VALUES
-(23, 'Living Room', 1, 5),
-(24, 'Kitchen', 1, 5),
-(25, 'Dining Room', 1, 5),
-(26, 'Master Bedroom', 2, 5),
-(27, 'Office', 2, 5),
-(28, 'Bathroom', 1, 5);
+INSERT INTO Rooms (name, floor, move_id) VALUES
+('Living Room', 1, 5),
+('Kitchen', 1, 5),
+('Dining Room', 1, 5),
+('Master Bedroom', 2, 5),
+('Office', 2, 5),
+('Bathroom', 1, 5);
 
 -- MOVE 6: Tom - Student Housing to Apartment (done)
-INSERT INTO Rooms (id, name, floor, move_id) VALUES
-(29, 'Bedroom', 1, 6),
-(30, 'Living Area', 1, 6),
-(31, 'Kitchen', 1, 6);
+INSERT INTO Rooms (name, floor, move_id) VALUES
+('Bedroom', 1, 6),
+('Living Area', 1, 6),
+('Kitchen', 1, 6);
 
 -- ========================================
 -- Boxes
 -- ========================================
 -- MOVE 1: John - Moving to Cambridge (packing) - 20 boxes
 -- Living Room (room_id = 1) - 5 boxes
-INSERT INTO Boxes (label_code, room_id, is_fragile, weight, status) VALUES
-('JD-LIV-001', 1, FALSE, 25.50, 'packed'),
-('JD-LIV-002', 1, TRUE, 8.75, 'packed'),
-('JD-LIV-003', 1, FALSE, 30.00, 'empty'),
-('JD-LIV-004', 1, FALSE, 20.25, 'packed'),
-('JD-LIV-005', 1, TRUE, 10.50, 'packed');
+INSERT INTO Boxes (move_id, room_name, label_code, fragile, weight, status) VALUES
+(1, 'Living Room', 'JD-LIV-001', FALSE, 25.50, 'packed'),
+(1, 'Living Room', 'JD-LIV-002', TRUE, 8.75, 'packed'),
+(1, 'Living Room', 'JD-LIV-003', FALSE, 30.00, 'empty'),
+(1, 'Living Room', 'JD-LIV-004', FALSE, 20.25, 'packed'),
+(1, 'Living Room', 'JD-LIV-005', TRUE, 10.50, 'packed');
 
 -- Kitchen (room_id = 2) - 6 boxes
-INSERT INTO Boxes (label_code, room_id, is_fragile, weight, status) VALUES
-('JD-KIT-001', 2, TRUE, 15.50, 'packed'),
-('JD-KIT-002', 2, TRUE, 18.00, 'packed'),
-('JD-KIT-003', 2, FALSE, 22.00, 'packed'),
-('JD-KIT-004', 2, FALSE, 12.50, 'empty'),
-('JD-KIT-005', 2, TRUE, 14.75, 'packed'),
-('JD-KIT-006', 2, FALSE, 19.25, 'packed');
+INSERT INTO Boxes (move_id, room_name, label_code, fragile, weight, status) VALUES
+(1, 'Kitchen', 'JD-KIT-001', TRUE, 15.50, 'packed'),
+(1, 'Kitchen', 'JD-KIT-002', TRUE, 18.00, 'packed'),
+(1, 'Kitchen', 'JD-KIT-003', FALSE, 22.00, 'packed'),
+(1, 'Kitchen', 'JD-KIT-004', FALSE, 12.50, 'empty'),
+(1, 'Kitchen', 'JD-KIT-005', TRUE, 14.75, 'packed'),
+(1, 'Kitchen', 'JD-KIT-006', FALSE, 19.25, 'packed');
 
 -- Dining Room (room_id = 3) - 2 boxes
-INSERT INTO Boxes (label_code, room_id, is_fragile, weight, status) VALUES
-('JD-DIN-001', 3, TRUE, 16.00, 'packed'),
-('JD-DIN-002', 3, FALSE, 18.50, 'empty');
+INSERT INTO Boxes (move_id, room_name, label_code, fragile, weight, status) VALUES
+(1, 'Dining Room', 'JD-DIN-001', TRUE, 16.00, 'packed'),
+(1, 'Dining Room', 'JD-DIN-002', FALSE, 18.50, 'empty');
 
 -- Master Bedroom (room_id = 4) - 4 boxes
-INSERT INTO Boxes (label_code, room_id, is_fragile, weight, status) VALUES
-('JD-MBR-001', 4, FALSE, 18.00, 'packed'),
-('JD-MBR-002', 4, FALSE, 20.50, 'packed'),
-('JD-MBR-003', 4, TRUE, 5.50, 'packed'),
-('JD-MBR-004', 4, FALSE, 22.00, 'empty');
+INSERT INTO Boxes (move_id, room_name, label_code, fragile, weight, status) VALUES
+(1, 'Master Bedroom', 'JD-MBR-001', FALSE, 18.00, 'packed'),
+(1, 'Master Bedroom', 'JD-MBR-002', FALSE, 20.50, 'packed'),
+(1, 'Master Bedroom', 'JD-MBR-003', TRUE, 5.50, 'packed'),
+(1, 'Master Bedroom', 'JD-MBR-004', FALSE, 22.00, 'empty');
 
 -- Home Office (room_id = 6) - 3 boxes
-INSERT INTO Boxes (label_code, room_id, is_fragile, weight, status) VALUES
-('JD-OFF-001', 6, TRUE, 10.00, 'packed'),
-('JD-OFF-002', 6, FALSE, 25.00, 'packed'),
-('JD-OFF-003', 6, FALSE, 18.50, 'packed');
+INSERT INTO Boxes (move_id, room_name, label_code, fragile, weight, status) VALUES
+(1, 'Home Office', 'JD-OFF-001', TRUE, 10.00, 'packed'),
+(1, 'Home Office', 'JD-OFF-002', FALSE, 25.00, 'packed'),
+(1, 'Home Office', 'JD-OFF-003', FALSE, 18.50, 'packed');
 
 -- MOVE 2: Jane - Upgrading to Bigger Place (in_transit) - 15 boxes
 -- Living Room (room_id = 9) - 5 boxes
-INSERT INTO Boxes (label_code, room_id, is_fragile, weight, status) VALUES
-('JS-LIV-001', 9, FALSE, 20.00, 'loaded'),
-('JS-LIV-002', 9, TRUE, 12.00, 'loaded'),
-('JS-LIV-003', 9, FALSE, 22.50, 'loaded'),
-('JS-LIV-004', 9, FALSE, 18.75, 'loaded'),
-('JS-LIV-005', 9, TRUE, 9.50, 'loaded');
+INSERT INTO Boxes (move_id, room_name, label_code, fragile, weight, status) VALUES
+(2, 'Living Room', 'JS-LIV-001', FALSE, 20.00, 'loaded'),
+(2, 'Living Room', 'JS-LIV-002', TRUE, 12.00, 'loaded'),
+(2, 'Living Room', 'JS-LIV-003', FALSE, 22.50, 'loaded'),
+(2, 'Living Room', 'JS-LIV-004', FALSE, 18.75, 'loaded'),
+(2, 'Living Room', 'JS-LIV-005', TRUE, 9.50, 'loaded');
 
 -- Kitchen (room_id = 10) - 5 boxes
-INSERT INTO Boxes (label_code, room_id, is_fragile, weight, status) VALUES
-('JS-KIT-001', 10, TRUE, 16.50, 'loaded'),
-('JS-KIT-002', 10, FALSE, 18.00, 'loaded'),
-('JS-KIT-003', 10, TRUE, 14.00, 'loaded'),
-('JS-KIT-004', 10, FALSE, 20.25, 'loaded'),
-('JS-KIT-005', 10, TRUE, 13.50, 'loaded');
+INSERT INTO Boxes (move_id, room_name, label_code, fragile, weight, status) VALUES
+(2, 'Kitchen', 'JS-KIT-001', TRUE, 16.50, 'loaded'),
+(2, 'Kitchen', 'JS-KIT-002', FALSE, 18.00, 'loaded'),
+(2, 'Kitchen', 'JS-KIT-003', TRUE, 14.00, 'loaded'),
+(2, 'Kitchen', 'JS-KIT-004', FALSE, 20.25, 'loaded'),
+(2, 'Kitchen', 'JS-KIT-005', TRUE, 13.50, 'loaded');
 
 -- Master Bedroom (room_id = 12) - 3 boxes
-INSERT INTO Boxes (label_code, room_id, is_fragile, weight, status) VALUES
-('JS-MBR-001', 12, FALSE, 22.00, 'loaded'),
-('JS-MBR-002', 12, FALSE, 19.50, 'loaded'),
-('JS-MBR-003', 12, TRUE, 7.00, 'loaded');
+INSERT INTO Boxes (move_id, room_name, label_code, fragile, weight, status) VALUES
+(2, 'Master Bedroom', 'JS-MBR-001', FALSE, 22.00, 'loaded'),
+(2, 'Master Bedroom', 'JS-MBR-002', FALSE, 19.50, 'loaded'),
+(2, 'Master Bedroom', 'JS-MBR-003', TRUE, 7.00, 'loaded');
 
 -- Home Office (room_id = 14) - 2 boxes
-INSERT INTO Boxes (label_code, room_id, is_fragile, weight, status) VALUES
-('JS-OFF-001', 14, TRUE, 12.00, 'loaded'),
-('JS-OFF-002', 14, FALSE, 20.00, 'loaded');
+INSERT INTO Boxes (move_id, room_name, label_code, fragile, weight, status) VALUES
+(2, 'Home Office', 'JS-OFF-001', TRUE, 12.00, 'loaded'),
+(2, 'Home Office', 'JS-OFF-002', FALSE, 20.00, 'loaded');
 
 -- MOVE 3: Jane - First Move to Boston (done) - 5 boxes
 -- Living Room (room_id = 16) - 2 boxes
-INSERT INTO Boxes (label_code, room_id, is_fragile, weight, status) VALUES
-('JS-OLD-LIV-001', 16, FALSE, 20.00, 'unpacked'),
-('JS-OLD-LIV-002', 16, TRUE, 10.00, 'unpacked');
+INSERT INTO Boxes (move_id, room_name, label_code, fragile, weight, status) VALUES
+(3, 'Living Room', 'JS-OLD-LIV-001', FALSE, 20.00, 'unpacked'),
+(3, 'Living Room', 'JS-OLD-LIV-002', TRUE, 10.00, 'unpacked');
 
 -- Bedroom (room_id = 17) - 2 boxes
-INSERT INTO Boxes (label_code, room_id, is_fragile, weight, status) VALUES
-('JS-OLD-BED-001', 17, FALSE, 18.00, 'unpacked'),
-('JS-OLD-BED-002', 17, FALSE, 16.50, 'unpacked');
+INSERT INTO Boxes (move_id, room_name, label_code, fragile, weight, status) VALUES
+(3, 'Bedroom', 'JS-OLD-BED-001', FALSE, 18.00, 'unpacked'),
+(3, 'Bedroom', 'JS-OLD-BED-002', FALSE, 16.50, 'unpacked');
 
 -- Kitchen (room_id = 18) - 1 box
-INSERT INTO Boxes (label_code, room_id, is_fragile, weight, status) VALUES
-('JS-OLD-KIT-001', 18, TRUE, 15.00, 'unpacked');
+INSERT INTO Boxes (move_id, room_name, label_code, fragile, weight, status) VALUES
+(3, 'Kitchen', 'JS-OLD-KIT-001', TRUE, 15.00, 'unpacked');
 
 -- MOVE 4: Mike - Downtown to Suburbs (done) - 8 boxes
 -- Living Room (room_id = 19) - 3 boxes
-INSERT INTO Boxes (label_code, room_id, is_fragile, weight, status) VALUES
-('MJ-LIV-001', 19, FALSE, 22.00, 'unpacked'),
-('MJ-LIV-002', 19, TRUE, 11.00, 'unpacked'),
-('MJ-LIV-003', 19, FALSE, 25.00, 'unpacked');
+INSERT INTO Boxes (move_id, room_name, label_code, fragile, weight, status) VALUES
+(4, 'Living Room', 'MJ-LIV-001', FALSE, 22.00, 'unpacked'),
+(4, 'Living Room', 'MJ-LIV-002', TRUE, 11.00, 'unpacked'),
+(4, 'Living Room', 'MJ-LIV-003', FALSE, 25.00, 'unpacked');
 
 -- Kitchen (room_id = 20) - 2 boxes
-INSERT INTO Boxes (label_code, room_id, is_fragile, weight, status) VALUES
-('MJ-KIT-001', 20, TRUE, 16.00, 'unpacked'),
-('MJ-KIT-002', 20, FALSE, 19.00, 'unpacked');
+INSERT INTO Boxes (move_id, room_name, label_code, fragile, weight, status) VALUES
+(4, 'Kitchen', 'MJ-KIT-001', TRUE, 16.00, 'unpacked'),
+(4, 'Kitchen', 'MJ-KIT-002', FALSE, 19.00, 'unpacked');
 
 -- Bedroom (room_id = 21) - 2 boxes
-INSERT INTO Boxes (label_code, room_id, is_fragile, weight, status) VALUES
-('MJ-BED-001', 21, FALSE, 20.00, 'unpacked'),
-('MJ-BED-002', 21, FALSE, 18.50, 'unpacked');
+INSERT INTO Boxes (move_id, room_name, label_code, fragile, weight, status) VALUES
+(4, 'Bedroom', 'MJ-BED-001', FALSE, 20.00, 'unpacked'),
+(4, 'Bedroom', 'MJ-BED-002', FALSE, 18.50, 'unpacked');
 
 -- Office (room_id = 22) - 1 box
-INSERT INTO Boxes (label_code, room_id, is_fragile, weight, status) VALUES
-('MJ-OFF-001', 22, TRUE, 12.00, 'unpacked');
+INSERT INTO Boxes (move_id, room_name, label_code, fragile, weight, status) VALUES
+(4, 'Office', 'MJ-OFF-001', TRUE, 12.00, 'unpacked');
 
 -- MOVE 5: Sarah - First Home Purchase (done) - 10 boxes
 -- Living Room (room_id = 23) - 3 boxes
-INSERT INTO Boxes (label_code, room_id, is_fragile, weight, status) VALUES
-('SW-LIV-001', 23, FALSE, 22.00, 'unpacked'),
-('SW-LIV-002', 23, TRUE, 15.00, 'unpacked'),
-('SW-LIV-003', 23, FALSE, 20.50, 'unpacked');
+INSERT INTO Boxes (move_id, room_name, label_code, fragile, weight, status) VALUES
+(5, 'Living Room', 'SW-LIV-001', FALSE, 22.00, 'unpacked'),
+(5, 'Living Room', 'SW-LIV-002', TRUE, 15.00, 'unpacked'),
+(5, 'Living Room', 'SW-LIV-003', FALSE, 20.50, 'unpacked');
 
 -- Kitchen (room_id = 24) - 3 boxes
-INSERT INTO Boxes (label_code, room_id, is_fragile, weight, status) VALUES
-('SW-KIT-001', 24, TRUE, 15.00, 'unpacked'),
-('SW-KIT-002', 24, FALSE, 18.00, 'unpacked'),
-('SW-KIT-003', 24, TRUE, 14.50, 'unpacked');
+INSERT INTO Boxes (move_id, room_name, label_code, fragile, weight, status) VALUES
+(5, 'Kitchen', 'SW-KIT-001', TRUE, 15.00, 'unpacked'),
+(5, 'Kitchen', 'SW-KIT-002', FALSE, 18.00, 'unpacked'),
+(5, 'Kitchen', 'SW-KIT-003', TRUE, 14.50, 'unpacked');
 
 -- Master Bedroom (room_id = 26) - 2 boxes
-INSERT INTO Boxes (label_code, room_id, is_fragile, weight, status) VALUES
-('SW-BED-001', 26, FALSE, 18.00, 'unpacked'),
-('SW-BED-002', 26, FALSE, 20.00, 'unpacked');
+INSERT INTO Boxes (move_id, room_name, label_code, fragile, weight, status) VALUES
+(5, 'Master Bedroom', 'SW-BED-001', FALSE, 18.00, 'unpacked'),
+(5, 'Master Bedroom', 'SW-BED-002', FALSE, 20.00, 'unpacked');
 
 -- Office (room_id = 27) - 2 boxes
-INSERT INTO Boxes (label_code, room_id, is_fragile, weight, status) VALUES
-('SW-OFF-001', 27, TRUE, 12.00, 'unpacked'),
-('SW-OFF-002', 27, FALSE, 16.00, 'unpacked');
+INSERT INTO Boxes (move_id, room_name, label_code, fragile, weight, status) VALUES
+(5, 'Office', 'SW-OFF-001', TRUE, 12.00, 'unpacked'),
+(5, 'Office', 'SW-OFF-002', FALSE, 16.00, 'unpacked');
 
 -- MOVE 6: Tom - Student Housing to Apartment (done) - 6 boxes
 -- Bedroom (room_id = 29) - 3 boxes
-INSERT INTO Boxes (label_code, room_id, is_fragile, weight, status) VALUES
-('TB-BED-001', 29, FALSE, 18.00, 'unpacked'),
-('TB-BED-002', 29, FALSE, 16.00, 'unpacked'),
-('TB-BED-003', 29, TRUE, 8.00, 'unpacked');
+INSERT INTO Boxes (move_id, room_name, label_code, fragile, weight, status) VALUES
+(6, 'Bedroom', 'TB-BED-001', FALSE, 18.00, 'unpacked'),
+(6, 'Bedroom', 'TB-BED-002', FALSE, 16.00, 'unpacked'),
+(6, 'Bedroom', 'TB-BED-003', TRUE, 8.00, 'unpacked');
 
 -- Living Area (room_id = 30) - 2 boxes
-INSERT INTO Boxes (label_code, room_id, is_fragile, weight, status) VALUES
-('TB-LIV-001', 30, FALSE, 20.00, 'unpacked'),
-('TB-LIV-002', 30, TRUE, 10.00, 'unpacked');
+INSERT INTO Boxes (move_id, room_name, label_code, fragile, weight, status) VALUES
+(6, 'Living Area', 'TB-LIV-001', FALSE, 20.00, 'unpacked'),
+(6, 'Living Area', 'TB-LIV-002', TRUE, 10.00, 'unpacked');
 
 -- Kitchen (room_id = 31) - 1 box
-INSERT INTO Boxes (label_code, room_id, is_fragile, weight, status) VALUES
-('TB-KIT-001', 31, TRUE, 15.00, 'unpacked');
+INSERT INTO Boxes (move_id, room_name, label_code, fragile, weight, status) VALUES
+(6, 'Kitchen', 'TB-KIT-001', TRUE, 15.00, 'unpacked');
 
 -- ========================================
 -- Items
 -- ========================================
 -- MOVE 1: John - Moving to Cambridge (boxes 1-20)
 -- Living Room boxes (1-5)
-INSERT INTO Items (box_id, name, quantity, est_value) VALUES
+INSERT INTO Items (box_id, name, quantity, value) VALUES
 -- Box 1: JD-LIV-001 (Furniture)
 (1, 'Table Lamp', 2, 130.00),
 (1, 'Floor Lamp', 1, 85.00),
@@ -327,7 +327,7 @@ INSERT INTO Items (box_id, name, quantity, est_value) VALUES
 (5, 'Ceramic Art', 2, 95.00);
 
 -- Kitchen boxes (6-11)
-INSERT INTO Items (box_id, name, quantity, est_value) VALUES
+INSERT INTO Items (box_id, name, quantity, value) VALUES
 -- Box 6: JD-KIT-001 (Kitchen/Fragile)
 (6, 'Dinner Plates', 8, 120.00),
 (6, 'Wine Glasses', 6, 80.00),
@@ -353,7 +353,7 @@ INSERT INTO Items (box_id, name, quantity, est_value) VALUES
 (11, 'Oven Mitts', 4, 35.00);
 
 -- Dining Room boxes (12-13)
-INSERT INTO Items (box_id, name, quantity, est_value) VALUES
+INSERT INTO Items (box_id, name, quantity, value) VALUES
 -- Box 12: JD-DIN-001 (Kitchen/Fragile)
 (12, 'Fine China', 12, 400.00),
 (12, 'Crystal Wine Glasses', 8, 200.00),
@@ -361,7 +361,7 @@ INSERT INTO Items (box_id, name, quantity, est_value) VALUES
 -- Box 13: JD-DIN-002 (Decorations) - EMPTY
 
 -- Master Bedroom boxes (14-17)
-INSERT INTO Items (box_id, name, quantity, est_value) VALUES
+INSERT INTO Items (box_id, name, quantity, value) VALUES
 -- Box 14: JD-MBR-001 (Clothing)
 (14, 'T-Shirts', 20, 300.00),
 (14, 'Jeans', 10, 500.00),
@@ -377,7 +377,7 @@ INSERT INTO Items (box_id, name, quantity, est_value) VALUES
 -- Box 17: JD-MBR-004 (Clothing) - EMPTY
 
 -- Home Office boxes (18-20)
-INSERT INTO Items (box_id, name, quantity, est_value) VALUES
+INSERT INTO Items (box_id, name, quantity, value) VALUES
 -- Box 18: JD-OFF-001 (Electronics/Fragile)
 (18, 'Laptop', 1, 1200.00),
 (18, 'Monitor', 2, 800.00),
@@ -396,7 +396,7 @@ INSERT INTO Items (box_id, name, quantity, est_value) VALUES
 
 -- MOVE 2: Jane - Upgrading to Bigger Place (boxes 21-35)
 -- Living Room boxes (21-25)
-INSERT INTO Items (box_id, name, quantity, est_value) VALUES
+INSERT INTO Items (box_id, name, quantity, value) VALUES
 -- Box 21: JS-LIV-001 (Furniture)
 (21, 'Table Lamp', 1, 65.00),
 (21, 'Throw Blankets', 3, 90.00),
@@ -416,7 +416,7 @@ INSERT INTO Items (box_id, name, quantity, est_value) VALUES
 (25, 'Crystal Figurines', 4, 280.00);
 
 -- Kitchen boxes (26-30)
-INSERT INTO Items (box_id, name, quantity, est_value) VALUES
+INSERT INTO Items (box_id, name, quantity, value) VALUES
 -- Box 26: JS-KIT-001 (Kitchen/Fragile)
 (26, 'Glassware Set', 12, 150.00),
 (26, 'Crystal Bowls', 3, 120.00),
@@ -435,7 +435,7 @@ INSERT INTO Items (box_id, name, quantity, est_value) VALUES
 (30, 'Champagne Flutes', 6, 90.00);
 
 -- Master Bedroom boxes (31-33)
-INSERT INTO Items (box_id, name, quantity, est_value) VALUES
+INSERT INTO Items (box_id, name, quantity, value) VALUES
 -- Box 31: JS-MBR-001 (Clothing)
 (31, 'Winter Coats', 5, 500.00),
 (31, 'Boots', 4, 320.00),
@@ -449,7 +449,7 @@ INSERT INTO Items (box_id, name, quantity, est_value) VALUES
 (33, 'Perfume Collection', 8, 400.00);
 
 -- Home Office boxes (34-35)
-INSERT INTO Items (box_id, name, quantity, est_value) VALUES
+INSERT INTO Items (box_id, name, quantity, value) VALUES
 -- Box 34: JS-OFF-001 (Electronics/Fragile)
 (34, 'iPad', 1, 600.00),
 (34, 'Speakers', 2, 300.00),
@@ -461,7 +461,7 @@ INSERT INTO Items (box_id, name, quantity, est_value) VALUES
 (35, 'Staplers and Tape', 5, 40.00);
 
 -- MOVE 3: Jane - First Move to Boston (boxes 36-40)
-INSERT INTO Items (box_id, name, quantity, est_value) VALUES
+INSERT INTO Items (box_id, name, quantity, value) VALUES
 -- Box 36: JS-OLD-LIV-001 (Furniture)
 (36, 'Sofa Pillows', 6, 120.00),
 (36, 'Throw Blankets', 3, 90.00),
@@ -479,7 +479,7 @@ INSERT INTO Items (box_id, name, quantity, est_value) VALUES
 (40, 'Glassware', 8, 120.00);
 
 -- MOVE 4: Mike - Downtown to Suburbs (boxes 41-48)
-INSERT INTO Items (box_id, name, quantity, est_value) VALUES
+INSERT INTO Items (box_id, name, quantity, value) VALUES
 -- Box 41: MJ-LIV-001 (Furniture)
 (41, 'Table Lamps', 2, 140.00),
 (41, 'Decorative Items', 8, 200.00),
@@ -507,7 +507,7 @@ INSERT INTO Items (box_id, name, quantity, est_value) VALUES
 (48, 'External Drives', 3, 300.00);
 
 -- MOVE 5: Sarah - First Home Purchase (boxes 49-58)
-INSERT INTO Items (box_id, name, quantity, est_value) VALUES
+INSERT INTO Items (box_id, name, quantity, value) VALUES
 -- Box 49: SW-LIV-001 (Furniture)
 (49, 'Sofa Pillows', 6, 120.00),
 (49, 'Throw Blankets', 3, 90.00),
@@ -544,7 +544,7 @@ INSERT INTO Items (box_id, name, quantity, est_value) VALUES
 (58, 'Desk Accessories', 10, 150.00);
 
 -- MOVE 6: Tom - Student Housing to Apartment (boxes 59-64)
-INSERT INTO Items (box_id, name, quantity, est_value) VALUES
+INSERT INTO Items (box_id, name, quantity, value) VALUES
 -- Box 59: TB-BED-001 (Clothing)
 (59, 'T-Shirts', 15, 225.00),
 (59, 'Jeans', 8, 400.00),

@@ -8,15 +8,14 @@ const ALLOWED_STATUS = new Set([
   "done"
 ]);
 
-
 const addressBelongsToUser = (userId, addressId) =>
   new Promise((resolve, reject) => {
     if (!addressId) return resolve(false);
 
     const q = `
-      SELECT id
-      FROM addresses
-      WHERE id = ? AND user_id = ?
+      SELECT address_id
+      FROM user_addresses
+      WHERE address_id = ? AND user_id = ?
       LIMIT 1
     `;
     db.query(q, [addressId, userId], (err, rows) => {
@@ -24,7 +23,6 @@ const addressBelongsToUser = (userId, addressId) =>
       resolve(rows.length === 1);
     });
   });
-
 
 export const listMoves = (req, res) => {
   const q = `
@@ -38,7 +36,6 @@ export const listMoves = (req, res) => {
     res.json(rows);
   });
 };
-
 
 export const getMove = (req, res) => {
   const { id } = req.params;
@@ -55,7 +52,6 @@ export const getMove = (req, res) => {
   });
 };
 
-
 export const createMove = async (req, res) => {
   try {
     const {
@@ -66,16 +62,15 @@ export const createMove = async (req, res) => {
       to_address_id
     } = req.body;
 
-    if (!title || !from_address_id || !to_address_id) {
-      return res
-        .status(400)
-        .json({ message: "title, from_address_id, to_address_id are required" });
+    if (!title || !move_date || !from_address_id || !to_address_id) {
+      return res.status(400).json({
+        message: "title, move_date, from_address_id, to_address_id are required"
+      });
     }
 
     if (!ALLOWED_STATUS.has(status)) {
       return res.status(400).json({ message: "Invalid status" });
     }
-
 
     const fromOk = await addressBelongsToUser(req.user.id, from_address_id);
     const toOk = await addressBelongsToUser(req.user.id, to_address_id);
@@ -96,7 +91,7 @@ export const createMove = async (req, res) => {
       [
         req.user.id,
         title,
-        move_date || null,
+        move_date,
         status,
         from_address_id,
         to_address_id
@@ -112,7 +107,6 @@ export const createMove = async (req, res) => {
   }
 };
 
-
 export const updateMove = async (req, res) => {
   const { id } = req.params;
   const { title, move_date, status, from_address_id, to_address_id } = req.body;
@@ -121,6 +115,11 @@ export const updateMove = async (req, res) => {
     return res.status(400).json({ message: "Invalid status" });
   }
 
+  if (move_date !== undefined && !move_date) {
+    return res
+      .status(400)
+      .json({ message: "move_date cannot be empty or null" });
+  }
 
   try {
     if (from_address_id !== undefined) {
@@ -141,7 +140,6 @@ export const updateMove = async (req, res) => {
     return res.status(500).json({ error: e.message });
   }
 
-  
   const fields = [];
   const params = [];
 
@@ -151,7 +149,7 @@ export const updateMove = async (req, res) => {
   }
   if (move_date !== undefined) {
     fields.push("move_date = ?");
-    params.push(move_date || null);
+    params.push(move_date);
   }
   if (status !== undefined) {
     fields.push("status = ?");
@@ -186,7 +184,6 @@ export const updateMove = async (req, res) => {
     res.json({ message: "Move updated" });
   });
 };
-
 
 export const deleteMove = (req, res) => {
   const { id } = req.params;

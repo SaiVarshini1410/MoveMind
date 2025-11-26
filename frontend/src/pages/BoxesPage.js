@@ -15,7 +15,11 @@ import {
   IconButton,
   Checkbox,
   FormControlLabel,
-  Chip
+  Chip,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemSecondaryAction
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -44,7 +48,7 @@ const formatStatus = (value) => {
 };
 
 function BoxesPage() {
-  const { moveId, roomId } = useParams();
+  const { moveId, roomName } = useParams();
   const navigate = useNavigate();
 
   const [move, setMove] = useState(null);
@@ -65,9 +69,7 @@ function BoxesPage() {
   const [qrText, setQrText] = useState("");
   const [qrError, setQrError] = useState("");
 
-
-  const [allCategories, setAllCategories] = useState([]); 
-
+  const [allCategories, setAllCategories] = useState([]);
   const [boxCategories, setBoxCategories] = useState({});
 
   const [form, setForm] = useState({
@@ -77,13 +79,26 @@ function BoxesPage() {
     status: "empty"
   });
 
+  const [itemsDialogOpen, setItemsDialogOpen] = useState(false);
+  const [itemsBox, setItemsBox] = useState(null);
+  const [items, setItems] = useState([]);
+  const [itemsLoading, setItemsLoading] = useState(false);
+  const [itemsError, setItemsError] = useState("");
+  const [itemForm, setItemForm] = useState({
+    name: "",
+    quantity: 1,
+    value: ""
+  });
+
   const loadData = async () => {
     setLoading(true);
     setError("");
 
     try {
+      const roomNameParam = encodeURIComponent(roomName);
+
       const [boxesRes, moveRes, roomsRes, categoriesRes] = await Promise.all([
-        apiClient.get(`/rooms/${roomId}/boxes`),
+        apiClient.get(`/moves/${moveId}/rooms/${roomNameParam}/boxes`),
         apiClient.get(`/moves/${moveId}`),
         apiClient.get(`/moves/${moveId}/rooms`),
         apiClient.get("/categories")
@@ -95,9 +110,8 @@ function BoxesPage() {
       setAllCategories(categoriesRes.data || []);
 
       const rooms = roomsRes.data || [];
-      const foundRoom = rooms.find((r) => String(r.id) === String(roomId));
+      const foundRoom = rooms.find((r) => r.name === roomName);
       setRoom(foundRoom || null);
-
 
       const catsMap = {};
       await Promise.all(
@@ -126,10 +140,10 @@ function BoxesPage() {
   };
 
   useEffect(() => {
-    if (moveId && roomId) {
+    if (moveId && roomName) {
       loadData();
     }
-  }, [moveId, roomId]);
+  }, [moveId, roomName]);
 
   const handleBackToRooms = () => {
     navigate(`/moves/${moveId}/rooms`);
@@ -191,10 +205,14 @@ function BoxesPage() {
 
     setSaving(true);
     try {
+      const roomNameParam = encodeURIComponent(roomName);
       if (editingBox) {
         await apiClient.patch(`/boxes/${editingBox.id}`, payload);
       } else {
-        await apiClient.post(`/rooms/${roomId}/boxes`, payload);
+        await apiClient.post(
+          `/moves/${moveId}/rooms/${roomNameParam}/boxes`,
+          payload
+        );
       }
       await loadData();
       setDialogOpen(false);
@@ -229,10 +247,91 @@ function BoxesPage() {
     }
   };
 
-  const handleGoToItems = (box) => {
-    navigate(`/boxes/${box.id}/items`);
+  const openItemsDialog = async (box) => {
+    setItemsBox(box);
+    setItemsDialogOpen(true);
+    setItemsError("");
+    setItemForm({ name: "", quantity: 1, value: "" });
+    setItemsLoading(true);
+    try {
+      const res = await apiClient.get(`/boxes/${box.id}/items`);
+      setItems(res.data || []);
+    } catch (err) {
+      console.error("Error loading items:", err);
+      const msg =
+        err.response?.data?.message ||
+        err.response?.data?.error ||
+        "Failed to load items.";
+      setItemsError(msg);
+    } finally {
+      setItemsLoading(false);
+    }
   };
 
+  const closeItemsDialog = () => {
+    if (itemsLoading) return;
+    setItemsDialogOpen(false);
+    setItemsBox(null);
+    setItems([]);
+    setItemsError("");
+  };
+
+  const handleItemFormChange = (e) => {
+    const { name, value } = e.target;
+    setItemForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleAddItem = async (e) => {
+    e.preventDefault();
+    if (!itemForm.name) {
+      setItemsError("Item name is required.");
+      return;
+    }
+    setItemsLoading(true);
+    try {
+      const payload = {
+        name: itemForm.name,
+        quantity:
+          itemForm.quantity !== "" ? Number(itemForm.quantity) || 1 : 1,
+        value:
+          itemForm.value !== "" ? Number(itemForm.value) : null
+      };
+      await apiClient.post(`/boxes/${itemsBox.id}/items`, payload);
+      const res = await apiClient.get(`/boxes/${itemsBox.id}/items`);
+      setItems(res.data || []);
+      setItemForm({ name: "", quantity: 1, value: "" });
+      setItemsError("");
+    } catch (err) {
+      console.error("Error adding item:", err);
+      const msg =
+        err.response?.data?.message ||
+        err.response?.data?.error ||
+        "Failed to add item.";
+      setItemsError(msg);
+    } finally {
+      setItemsLoading(false);
+    }
+  };
+
+  const handleDeleteItem = async (item) => {
+    const ok = window.confirm(`Delete item "${item.name}"?`);
+    if (!ok) return;
+    setItemsLoading(true);
+    try {
+      await apiClient.delete(`/items/${item.id}`);
+      const res = await apiClient.get(`/boxes/${itemsBox.id}/items`);
+      setItems(res.data || []);
+    } catch (err) {
+      console.error("Error deleting item:", err);
+      const msg =
+        err.response?.data?.message ||
+        err.response?.data?.error ||
+        "Failed to delete item.";
+      setItemsError(msg);
+    } finally {
+      setItemsLoading(false);
+    }
+  };
 
   const handleOpenQrDialog = async (box) => {
     setQrBox(box);
@@ -243,7 +342,7 @@ function BoxesPage() {
 
     try {
       const itemsRes = await apiClient.get(`/boxes/${box.id}/items`);
-      const items = itemsRes.data || [];
+      const itemsList = itemsRes.data || [];
 
       const headerLines = [
         `MoveMind – Box: ${box.label_code}`,
@@ -255,8 +354,8 @@ function BoxesPage() {
       ].filter(Boolean);
 
       const itemLines =
-        items.length > 0
-          ? items.map((it) => {
+        itemsList.length > 0
+          ? itemsList.map((it) => {
               let line = `• ${it.name}`;
               if (it.quantity != null) line += ` x${it.quantity}`;
               if (it.value != null) line += ` (value: ${it.value})`;
@@ -296,18 +395,15 @@ function BoxesPage() {
         return;
       }
 
-
       if (current && String(current.id) === String(newCatId)) {
         return;
       }
-
 
       if (current) {
         await apiClient.delete(
           `/boxes/${boxId}/categories/${current.id}`
         );
       }
-
 
       await apiClient.post(`/boxes/${boxId}/categories/${newCatId}`);
 
@@ -355,7 +451,7 @@ function BoxesPage() {
             <Typography variant="body2" color="text.secondary">
               {room && move
                 ? `Room: ${room.name} • Move: ${move.title}`
-                : `Boxes for room #${roomId}`}
+                : `Boxes for room "${roomName}"`}
             </Typography>
           </Box>
         </Box>
@@ -381,7 +477,8 @@ function BoxesPage() {
         <Box sx={{ mt: 1 }}>
           {boxes.length === 0 ? (
             <Alert severity="info">
-              No boxes yet in this room. Click &quot;New box&quot; to create one.
+              No boxes yet in this room. Click &quot;New box&quot; to create
+              one.
             </Alert>
           ) : (
             <Box
@@ -412,7 +509,6 @@ function BoxesPage() {
                     minHeight: 170
                   }}
                 >
-
                   <Box
                     sx={{
                       display: "flex",
@@ -449,7 +545,6 @@ function BoxesPage() {
                     </Box>
                   </Box>
 
-
                   <Typography
                     variant="body2"
                     sx={{ color: "text.secondary" }}
@@ -471,7 +566,7 @@ function BoxesPage() {
                     <Button
                       size="small"
                       variant="outlined"
-                      onClick={() => handleGoToItems(box)}
+                      onClick={() => openItemsDialog(box)}
                     >
                       ITEMS
                     </Button>
@@ -666,6 +761,102 @@ function BoxesPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseQrDialog}>Close</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={itemsDialogOpen}
+        onClose={closeItemsDialog}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>
+          {itemsBox ? `Items in ${itemsBox.label_code}` : "Items"}
+        </DialogTitle>
+        <DialogContent dividers>
+          {itemsError && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {itemsError}
+            </Alert>
+          )}
+
+          <Box
+            component="form"
+            onSubmit={handleAddItem}
+            sx={{ mb: 3, display: "flex", gap: 2, flexWrap: "wrap" }}
+          >
+            <TextField
+              label="Item name *"
+              name="name"
+              value={itemForm.name}
+              onChange={handleItemFormChange}
+              sx={{ flex: 2, minWidth: 160 }}
+            />
+            <TextField
+              label="Quantity"
+              name="quantity"
+              type="number"
+              value={itemForm.quantity}
+              onChange={handleItemFormChange}
+              sx={{ flex: 1, minWidth: 100 }}
+            />
+            <TextField
+              label="Value"
+              name="value"
+              type="number"
+              value={itemForm.value}
+              onChange={handleItemFormChange}
+              sx={{ flex: 1, minWidth: 120 }}
+            />
+            <Button
+              type="submit"
+              variant="contained"
+              disabled={itemsLoading}
+              sx={{ alignSelf: "center", mt: { xs: 2, sm: 0 } }}
+            >
+              Add item
+            </Button>
+          </Box>
+
+          {itemsLoading && items.length === 0 ? (
+            <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
+              <CircularProgress size={24} />
+            </Box>
+          ) : items.length === 0 ? (
+            <Typography variant="body2" color="text.secondary">
+              No items yet in this box.
+            </Typography>
+          ) : (
+            <List dense>
+              {items.map((it) => (
+                <ListItem key={it.id} divider>
+                  <ListItemText
+                    primary={it.name}
+                    secondary={`Qty: ${
+                      it.quantity != null ? it.quantity : 1
+                    }${
+                      it.value != null ? ` • Value: ${it.value}` : ""
+                    }`}
+                  />
+                  <ListItemSecondaryAction>
+                    <IconButton
+                      edge="end"
+                      size="small"
+                      color="error"
+                      onClick={() => handleDeleteItem(it)}
+                    >
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </ListItemSecondaryAction>
+                </ListItem>
+              ))}
+            </List>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeItemsDialog} disabled={itemsLoading}>
+            Close
+          </Button>
         </DialogActions>
       </Dialog>
     </AppLayout>

@@ -3,7 +3,6 @@ import { requireAuth } from "../middleware/authMiddleware.js";
 import {
   listUtilitiesForMove,
   addUtilityToMove,
-  getMoveUtility,
   updateMoveUtility,
   deleteMoveUtility
 } from "../controllers/moveUtilitiesController.js";
@@ -12,13 +11,9 @@ const router = express.Router();
 
 router.use(requireAuth);
 
-
 router.get("/moves/:moveId/utilities", listUtilitiesForMove);
 router.post("/moves/:moveId/utilities", addUtilityToMove);
-
-
-router.get("/move-utilities/:id", getMoveUtility);
-router.patch("/move-utilities/:id", updateMoveUtility);
-router.delete("/move-utilities/:id", deleteMoveUtility);
+router.patch("/moves/:moveId/utilities/:utilityId", updateMoveUtility);
+router.delete("/moves/:moveId/utilities/:utilityId", deleteMoveUtility);
 
 export default router;

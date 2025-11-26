@@ -6,7 +6,9 @@ const userOwnsBox = (boxId, userId) =>
     const q = `
       SELECT b.id
       FROM boxes b
-      JOIN rooms r ON r.id = b.room_id
+      JOIN rooms r
+        ON r.move_id = b.move_id
+       AND r.name    = b.room_name
       JOIN moves m ON m.id = r.move_id
       WHERE b.id = ? AND m.user_id = ?
       LIMIT 1
@@ -16,6 +18,7 @@ const userOwnsBox = (boxId, userId) =>
       resolve(rows.length === 1);
     });
   });
+
 
 
 const categoryExists = (categoryId) =>

@@ -67,7 +67,7 @@ function App() {
       />
 
       <Route
-        path="/moves/:moveId/rooms/:roomId/boxes"
+        path="/moves/:moveId/rooms/:roomName/boxes"
         element={
           <RequireAuth>
             <BoxesPage />

@@ -128,7 +128,10 @@ function RoomsPage() {
     setSaving(true);
     try {
       if (editingRoom) {
-        await apiClient.patch(`/rooms/${editingRoom.id}`, payload);
+        await apiClient.patch(
+          `/moves/${moveId}/rooms/${encodeURIComponent(editingRoom.name)}`,
+          payload
+        );
       } else {
         await apiClient.post(`/moves/${moveId}/rooms`, payload);
       }
@@ -153,7 +156,9 @@ function RoomsPage() {
     if (!ok) return;
 
     try {
-      await apiClient.delete(`/rooms/${room.id}`);
+      await apiClient.delete(
+        `/moves/${moveId}/rooms/${encodeURIComponent(room.name)}`
+      );
       await loadData();
     } catch (err) {
       console.error("Error deleting room:", err);
@@ -166,7 +171,7 @@ function RoomsPage() {
   };
 
   const handleGoToBoxes = (room) => {
-    navigate(`/moves/${moveId}/rooms/${room.id}/boxes`);
+    navigate(`/moves/${moveId}/rooms/${encodeURIComponent(room.name)}/boxes`);
   };
 
   return (
@@ -256,7 +261,10 @@ function RoomsPage() {
                   </TableRow>
                 ) : (
                   rooms.map((room) => (
-                    <TableRow key={room.id} hover>
+                    <TableRow
+                      key={`${room.move_id}-${room.name}`}
+                      hover
+                    >
                       <TableCell sx={{ color: "#F9FAFB" }}>
                         {room.name}
                       </TableCell>

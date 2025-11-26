@@ -111,6 +111,7 @@ function UtilitiesPage() {
       return;
     }
     setTableLoading(true);
+    setError("");
     try {
       const res = await apiClient.get(`/moves/${moveId}/utilities`);
       setMoveUtilities(res.data || []);
@@ -185,8 +186,7 @@ function UtilitiesPage() {
       return;
     }
 
-    const payload = {
-      utility_id: Number(utility_id),
+    const basePayload = {
       account_number: account_number || null,
       stop_date: stop_date || null,
       start_date: start_date || null,
@@ -196,12 +196,15 @@ function UtilitiesPage() {
     setSaving(true);
     try {
       if (editingMu) {
-        const updatePayload = {
-          ...payload,
-          move_id: Number(move_id)
-        };
-        await apiClient.patch(`/move-utilities/${editingMu.id}`, updatePayload);
+        await apiClient.patch(
+          `/moves/${move_id}/utilities/${utility_id}`,
+          basePayload
+        );
       } else {
+        const payload = {
+          ...basePayload,
+          utility_id: Number(utility_id)
+        };
         await apiClient.post(`/moves/${move_id}/utilities`, payload);
       }
 
@@ -221,12 +224,14 @@ function UtilitiesPage() {
 
   const handleDelete = async (mu) => {
     const ok = window.confirm(
-      `Delete utility "${mu.id}" for this move? This cannot be undone.`
+      `Delete utility "${mu.provider_name}" for this move? This cannot be undone.`
     );
     if (!ok) return;
 
     try {
-      await apiClient.delete(`/move-utilities/${mu.id}`);
+      await apiClient.delete(
+        `/moves/${mu.move_id}/utilities/${mu.utility_id}`
+      );
       await loadMoveUtilities(selectedMoveId);
     } catch (err) {
       const msg =
@@ -375,17 +380,23 @@ function UtilitiesPage() {
                   moveUtilities.map((mu) => {
                     const info = getUtilityInfo(mu.utility_id);
                     return (
-                      <TableRow key={mu.id} hover>
+                      <TableRow
+                        key={`${mu.move_id}-${mu.utility_id}`}
+                        hover
+                      >
                         <TableCell sx={{ color: "#F9FAFB" }}>
                           {getMoveTitle(mu.move_id)}
                         </TableCell>
                         <TableCell sx={{ color: "#F9FAFB" }}>
-                          {info.name}
+                          {mu.provider_name || info.name}
                         </TableCell>
                         <TableCell align="center">
                           <Chip
                             label={
-                              TYPE_LABELS[info.type] || info.type || "Other"
+                              TYPE_LABELS[mu.type || info.type] ||
+                              mu.type ||
+                              info.type ||
+                              "Other"
                             }
                             size="small"
                             sx={{ fontSize: 11 }}
