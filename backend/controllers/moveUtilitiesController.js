@@ -8,51 +8,90 @@ const ALLOWED_STATUSES = new Set([
   "cancelled"
 ]);
 
-const userOwnsMove = (moveId, userId) =>
-  new Promise((resolve, reject) => {
-    const q = "SELECT id FROM moves WHERE id = ? AND user_id = ? LIMIT 1";
-    db.query(q, [moveId, userId], (err, rows) => {
-      if (err) return reject(err);
-      resolve(rows.length === 1);
-    });
+function checkUserOwnsMove(moveId, userId) {
+  return new Promise((resolve, reject) => {
+    db.query(
+      "CALL sp_check_user_owns_move(?, ?, @owns)",
+      [moveId, userId],
+      (err) => {
+        if (err) return reject(err);
+        db.query("SELECT @owns AS owns", (err2, rows2) => {
+          if (err2) return reject(err2);
+          const row = rows2 && rows2[0] ? rows2[0] : {};
+          const owns =
+            row.owns === 1 ||
+            row.owns === true ||
+            row.owns === "1" ||
+            row.owns === "true";
+          resolve(owns);
+        });
+      }
+    );
   });
+}
 
-const utilityExists = (utilityId) =>
-  new Promise((resolve, reject) => {
-    const q = "SELECT id FROM utilities WHERE id = ? LIMIT 1";
-    db.query(q, [utilityId], (err, rows) => {
-      if (err) return reject(err);
-      resolve(rows.length === 1);
-    });
+function checkUtilityExists(utilityId) {
+  return new Promise((resolve, reject) => {
+    db.query(
+      "CALL sp_check_utility_exists(?, @exists)",
+      [utilityId],
+      (err) => {
+        if (err) return reject(err);
+        db.query("SELECT @exists AS existsFlag", (err2, rows2) => {
+          if (err2) return reject(err2);
+          const row = rows2 && rows2[0] ? rows2[0] : {};
+          const exists =
+            row.existsFlag === 1 ||
+            row.existsFlag === true ||
+            row.existsFlag === "1" ||
+            row.existsFlag === "true";
+          resolve(exists);
+        });
+      }
+    );
   });
+}
+
+function checkMoveUtilityExists(moveId, utilityId, userId) {
+  return new Promise((resolve, reject) => {
+    db.query(
+      "CALL sp_check_move_utility_exists(?, ?, ?, @exists)",
+      [moveId, utilityId, userId],
+      (err) => {
+        if (err) return reject(err);
+        db.query("SELECT @exists AS existsFlag", (err2, rows2) => {
+          if (err2) return reject(err2);
+          const row = rows2 && rows2[0] ? rows2[0] : {};
+          const exists =
+            row.existsFlag === 1 ||
+            row.existsFlag === true ||
+            row.existsFlag === "1" ||
+            row.existsFlag === "true";
+          resolve(exists);
+        });
+      }
+    );
+  });
+}
 
 export const listUtilitiesForMove = async (req, res) => {
   const { moveId } = req.params;
 
   try {
-    const owns = await userOwnsMove(Number(moveId), req.user.id);
-    if (!owns) return res.status(404).json({ message: "Move not found" });
+    const owns = await checkUserOwnsMove(Number(moveId), req.user.id);
+    if (!owns) {
+      return res.status(404).json({ message: "Move not found" });
+    }
 
-    const q = `
-      SELECT
-        mu.move_id,
-        mu.utility_id,
-        u.provider_name,
-        u.type,
-        mu.account_number,
-        mu.start_date,
-        mu.stop_date,
-        mu.status
-      FROM move_utilities mu
-      JOIN moves m ON m.id = mu.move_id
-      JOIN utilities u ON u.id = mu.utility_id
-      WHERE mu.move_id = ? AND m.user_id = ?
-      ORDER BY u.type, u.provider_name
-    `;
-    db.query(q, [moveId, req.user.id], (err, rows) => {
-      if (err) return res.status(500).json({ error: err.message });
-      res.json(rows);
-    });
+    db.query(
+      "CALL sp_list_utilities_for_move(?, ?)",
+      [moveId, req.user.id],
+      (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        const data = Array.isArray(rows) && Array.isArray(rows[0]) ? rows[0] : [];
+        res.json(data || []);
+      }
+    );
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -76,121 +115,135 @@ export const addUtilityToMove = async (req, res) => {
   }
 
   try {
-    const owns = await userOwnsMove(Number(moveId), req.user.id);
-    if (!owns) return res.status(404).json({ message: "Move not found" });
+    const owns = await checkUserOwnsMove(Number(moveId), req.user.id);
+    if (!owns) {
+      return res.status(404).json({ message: "Move not found" });
+    }
 
-    const exists = await utilityExists(Number(utility_id));
-    if (!exists) return res.status(400).json({ message: "Invalid utility_id" });
+    const exists = await checkUtilityExists(Number(utility_id));
+    if (!exists) {
+      return res.status(400).json({ message: "Invalid utility_id" });
+    }
 
-    const q = `
-      INSERT INTO move_utilities
-        (move_id, utility_id, account_number, start_date, stop_date, status)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `;
     const params = [
-      moveId,
-      utility_id,
-      account_number,
-      start_date,
-      stop_date,
-      status
+      Number(moveId),
+      Number(utility_id),
+      account_number || null,
+      start_date || null,
+      stop_date || null,
+      status,
+      null,
+      null
     ];
 
-    db.query(q, params, (err) => {
-      if (err) {
-        if (err.code === "ER_DUP_ENTRY") {
-          return res
-            .status(400)
-            .json({ message: "Utility already attached to this move" });
+    db.query(
+      "CALL sp_add_utility_to_move(?, ?, ?, ?, ?, ?, @success, @message)",
+      params.slice(0, 6),
+      (err) => {
+        if (err) {
+          if (err.code === "ER_DUP_ENTRY") {
+            return res
+              .status(400)
+              .json({ message: "Utility already attached to this move" });
+          }
+          return res.status(500).json({ error: err.message });
         }
-        return res.status(500).json({ error: err.message });
+
+        db.query("SELECT @success AS success, @message AS message", (err2, rows2) => {
+          if (err2) return res.status(500).json({ error: err2.message });
+
+          const row = rows2 && rows2[0] ? rows2[0] : {};
+          const success =
+            row.success === 1 ||
+            row.success === true ||
+            row.success === "1" ||
+            row.success === "true";
+          const message = row.message || "Move utility added";
+
+          if (!success) {
+            return res.status(400).json({ message });
+          }
+
+          res.status(201).json({ message });
+        });
       }
-      res.status(201).json({ message: "Move utility added" });
-    });
+    );
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
 };
 
-export const updateMoveUtility = (req, res) => {
+export const updateMoveUtility = async (req, res) => {
   const { moveId, utilityId } = req.params;
-  const {
-    account_number,
-    start_date,
-    stop_date,
-    status
-  } = req.body;
+  const { account_number, start_date, stop_date, status } = req.body;
 
   if (status && !ALLOWED_STATUSES.has(status)) {
     return res.status(400).json({ message: "Invalid status" });
   }
 
-  const check = `
-    SELECT mu.move_id, mu.utility_id
-    FROM move_utilities mu
-    JOIN moves m ON m.id = mu.move_id
-    WHERE mu.move_id = ? AND mu.utility_id = ? AND m.user_id = ?
-    LIMIT 1
-  `;
-  db.query(check, [moveId, utilityId, req.user.id], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
-    if (!rows.length) {
+  if (
+    account_number === undefined &&
+    start_date === undefined &&
+    stop_date === undefined &&
+    status === undefined
+  ) {
+    return res.status(400).json({ message: "No fields to update" });
+  }
+
+  try {
+    const exists = await checkMoveUtilityExists(
+      Number(moveId),
+      Number(utilityId),
+      req.user.id
+    );
+    if (!exists) {
       return res.status(404).json({ message: "Move utility not found" });
     }
 
-    const fields = [];
-    const params = [];
+    const pAccount = account_number === undefined ? null : account_number;
+    const pStart = start_date === undefined ? null : start_date;
+    const pStop = stop_date === undefined ? null : stop_date;
+    const pStatus = status === undefined ? null : status;
 
-    if (account_number !== undefined) {
-      fields.push("account_number = ?");
-      params.push(account_number);
-    }
-    if (start_date !== undefined) {
-      fields.push("start_date = ?");
-      params.push(start_date);
-    }
-    if (stop_date !== undefined) {
-      fields.push("stop_date = ?");
-      params.push(stop_date);
-    }
-    if (status !== undefined) {
-      fields.push("status = ?");
-      params.push(status);
-    }
-
-    if (!fields.length) {
-      return res.status(400).json({ message: "No fields to update" });
-    }
-
-    const q2 = `
-      UPDATE move_utilities
-      SET ${fields.join(", ")}
-      WHERE move_id = ? AND utility_id = ?
-      LIMIT 1
-    `;
-    params.push(moveId, utilityId);
-
-    db.query(q2, params, (err2) => {
-      if (err2) return res.status(500).json({ error: err2.message });
-      res.json({ message: "Move utility updated" });
-    });
-  });
+    db.query(
+      "CALL sp_update_move_utility(?, ?, ?, ?, ?, ?)",
+      [Number(moveId), Number(utilityId), pAccount, pStart, pStop, pStatus],
+      (err) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: "Move utility updated" });
+      }
+    );
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 };
 
 export const deleteMoveUtility = (req, res) => {
   const { moveId, utilityId } = req.params;
 
-  const q = `
-    DELETE mu
-    FROM move_utilities mu
-    JOIN moves m ON m.id = mu.move_id
-    WHERE mu.move_id = ? AND mu.utility_id = ? AND m.user_id = ?
-  `;
-  db.query(q, [moveId, utilityId, req.user.id], (err, result) => {
-    if (err) return res.status(500).json({ error: err.message });
-    if (!result.affectedRows) {
-      return res.status(404).json({ message: "Move utility not found" });
+  db.query(
+    "CALL sp_delete_move_utility(?, ?, ?, @success, @message)",
+    [Number(moveId), Number(utilityId), req.user.id],
+    (err) => {
+      if (err) return res.status(500).json({ error: err.message });
+
+      db.query("SELECT @success AS success, @message AS message", (err2, rows2) => {
+        if (err2) return res.status(500).json({ error: err2.message });
+
+        const row = rows2 && rows2[0] ? rows2[0] : {};
+        const success =
+          row.success === 1 ||
+          row.success === true ||
+          row.success === "1" ||
+          row.success === "true";
+        const message = row.message || "Move utility deleted";
+
+        if (!success) {
+          return res.status(404).json({ message });
+        }
+
+        res.json({ message });
+      });
     }
-    res.json({ message: "Move utility deleted" });
-  });
+  );
 };

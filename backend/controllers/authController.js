@@ -17,7 +17,40 @@ const makeToken = (user) => {
   );
 };
 
-export const registerUser = (req, res) => {
+function callRegisterUser(firstName, lastName, email, hashedPassword) {
+  return new Promise((resolve, reject) => {
+    db.query(
+      "CALL sp_register_user(?, ?, ?, ?, @user_id, @message)",
+      [firstName, lastName, email, hashedPassword],
+      (err) => {
+        if (err) return reject(err);
+        db.query(
+          "SELECT @user_id AS user_id, @message AS message",
+          (err2, rows2) => {
+            if (err2) return reject(err2);
+            const row = rows2 && rows2[0] ? rows2[0] : {};
+            resolve({
+              userId: row.user_id,
+              message: row.message || ""
+            });
+          }
+        );
+      }
+    );
+  });
+}
+
+function callGetUserByEmail(email) {
+  return new Promise((resolve, reject) => {
+    db.query("CALL sp_get_user_by_email(?)", [email], (err, rows) => {
+      if (err) return reject(err);
+      const data = Array.isArray(rows) && Array.isArray(rows[0]) ? rows[0] : [];
+      resolve(data[0] || null);
+    });
+  });
+}
+
+export const registerUser = async (req, res) => {
   let { first_name, last_name, email, password } = req.body;
 
   if (!first_name || !last_name || !email || !password) {
@@ -28,58 +61,61 @@ export const registerUser = (req, res) => {
   last_name = String(last_name).trim();
   email = String(email).trim().toLowerCase();
 
-  const q1 = "SELECT id FROM users WHERE email = ?";
-  db.query(q1, [email], async (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
-    if (rows.length) return res.status(400).json({ message: "User already exists" });
-
+  try {
     const hashed = await bcrypt.hash(password, 10);
+    const result = await callRegisterUser(first_name, last_name, email, hashed);
 
-    const q2 = `
-      INSERT INTO users (first_name, last_name, email, password)
-      VALUES (?, ?, ?, ?)
-    `;
-    db.query(q2, [first_name, last_name, email, hashed], (err) => {
-      if (err) return res.status(500).json({ error: err.message });
-      return res.status(201).json({ message: "User registered successfully" });
-    });
-  });
+    if (!result.userId) {
+      return res.status(400).json({
+        message: result.message || "User already exists"
+      });
+    }
+
+    return res
+      .status(201)
+      .json({ message: result.message || "User registered successfully" });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
 };
 
-export const loginUser = (req, res) => {
+export const loginUser = async (req, res) => {
   let { email, password } = req.body;
 
-  if (!email || !password)
-    return res.status(400).json({ message: "Email and password are required" });
+  if (!email || !password) {
+    return res
+      .status(400)
+      .json({ message: "Email and password are required" });
+  }
 
   email = String(email).trim().toLowerCase();
 
-  const q = "SELECT id, first_name, last_name, email, password FROM users WHERE email = ?";
-  db.query(q, [email], async (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
-    if (!rows.length) return res.status(404).json({ message: "User not found" });
-
-    const user = rows[0];
-    const ok = await bcrypt.compare(password, user.password);
-    if (!ok) return res.status(400).json({ message: "Invalid credentials" });
-
-    try {
-      const token = makeToken(user);
-      return res.json({
-        message: "Login successful",
-        token,
-        user: {
-          id: user.id,
-          first_name: user.first_name,
-          last_name: user.last_name,
-          email: user.email,
-        },
-      });
-    } catch (e) {
-      console.error("JWT error:", e.message);
-      return res.status(500).json({ message: "Auth server misconfigured" });
+  try {
+    const user = await callGetUserByEmail(email);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
     }
-  });
+
+    const ok = await bcrypt.compare(password, user.password);
+    if (!ok) {
+      return res.status(400).json({ message: "Invalid credentials" });
+    }
+
+    const token = makeToken(user);
+    return res.json({
+      message: "Login successful",
+      token,
+      user: {
+        id: user.id,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        email: user.email
+      }
+    });
+  } catch (e) {
+    console.error("Auth error:", e.message);
+    return res.status(500).json({ message: "Auth server error" });
+  }
 };
 
 export const getMe = (req, res) => {

@@ -8,18 +8,29 @@ const ALLOWED_STATUS = new Set([
   "unpacked"
 ]);
 
-const userOwnsRoom = (moveId, roomName, userId) =>
+const checkUserOwnsRoom = (moveId, roomName, userId) =>
   new Promise((resolve, reject) => {
-    const q = `
-      SELECT r.move_id, r.name
-      FROM rooms r
-      JOIN moves m ON m.id = r.move_id
-      WHERE r.move_id = ? AND r.name = ? AND m.user_id = ?
-      LIMIT 1
-    `;
-    db.query(q, [moveId, roomName, userId], (err, rows) => {
+    const callSql = "CALL sp_check_user_owns_room(?, ?, ?, @owns)";
+    db.query(callSql, [moveId, roomName, userId], (err) => {
       if (err) return reject(err);
-      resolve(rows.length === 1);
+      db.query("SELECT @owns AS owns", (err2, rows2) => {
+        if (err2) return reject(err2);
+        const owns = Boolean(rows2?.[0]?.owns);
+        resolve(owns);
+      });
+    });
+  });
+
+const checkUserOwnsBox = (boxId, userId) =>
+  new Promise((resolve, reject) => {
+    const callSql = "CALL sp_check_user_owns_box(?, ?, @owns)";
+    db.query(callSql, [boxId, userId], (err) => {
+      if (err) return reject(err);
+      db.query("SELECT @owns AS owns", (err2, rows2) => {
+        if (err2) return reject(err2);
+        const owns = Boolean(rows2?.[0]?.owns);
+        resolve(owns);
+      });
     });
   });
 
@@ -28,28 +39,19 @@ export const listBoxesByRoom = async (req, res) => {
   const { status } = req.query;
 
   try {
-    const ownsRoom = await userOwnsRoom(Number(moveId), roomName, req.user.id);
+    const ownsRoom = await checkUserOwnsRoom(Number(moveId), roomName, req.user.id);
     if (!ownsRoom) return res.status(404).json({ message: "Room not found" });
 
-    const where = ["b.move_id = ?", "b.room_name = ?"];
-    const params = [moveId, roomName];
-
-    if (status) {
-      if (!ALLOWED_STATUS.has(status)) {
-        return res.status(400).json({ message: "Invalid status" });
-      }
-      where.push("b.status = ?");
-      params.push(status);
+    if (status && !ALLOWED_STATUS.has(status)) {
+      return res.status(400).json({ message: "Invalid status" });
     }
 
-    const q = `
-      SELECT b.id, b.move_id, b.room_name, b.label_code, b.fragile, b.weight, b.status
-      FROM boxes b
-      WHERE ${where.join(" AND ")}
-      ORDER BY b.id DESC
-    `;
-    db.query(q, params, (err, rows) => {
+    const sql = "CALL sp_list_boxes_by_room(?, ?, ?)";
+    const statusParam = status || null;
+
+    db.query(sql, [moveId, roomName, statusParam], (err, results) => {
       if (err) return res.status(500).json({ error: err.message });
+      const rows = (results && results[0]) || [];
       res.json(rows);
     });
   } catch (e) {
@@ -70,53 +72,63 @@ export const createBox = async (req, res) => {
   }
 
   try {
-    const ownsRoom = await userOwnsRoom(Number(moveId), roomName, req.user.id);
+    const ownsRoom = await checkUserOwnsRoom(Number(moveId), roomName, req.user.id);
     if (!ownsRoom) return res.status(404).json({ message: "Room not found" });
 
-    const q = `
-      INSERT INTO boxes (move_id, room_name, label_code, fragile, weight, status)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `;
-    db.query(
-      q,
-      [moveId, roomName, label_code, fragile ? 1 : 0, weight, status],
-      (err, result) => {
-        if (err) {
-          if (err.code === "ER_DUP_ENTRY") {
-            return res
-              .status(400)
-              .json({ message: "label_code must be unique" });
-          }
-          return res.status(500).json({ error: err.message });
+    const sql = "CALL sp_create_box(?, ?, ?, ?, ?, ?)";
+    const params = [
+      moveId,
+      roomName,
+      label_code,
+      fragile ? 1 : 0,
+      weight,
+      status
+    ];
+
+    db.query(sql, params, (err, results) => {
+      if (err) {
+        if (err.code === "ER_DUP_ENTRY") {
+          return res.status(400).json({ message: "label_code must be unique" });
         }
-        res
-          .status(201)
-          .json({ id: result.insertId, message: "Box created" });
+        return res.status(500).json({ error: err.message });
       }
-    );
+
+      const rows = (results && results[0]) || [];
+      const row = rows[0] || {};
+      const newId = row.id;
+
+      res.status(201).json({
+        id: newId,
+        message: "Box created"
+      });
+    });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
 };
 
-export const getBox = (req, res) => {
+export const getBox = async (req, res) => {
   const { boxId } = req.params;
-  const q = `
-    SELECT b.id, b.move_id, b.room_name, b.label_code, b.fragile, b.weight, b.status
-    FROM boxes b
-    JOIN rooms r ON r.move_id = b.move_id AND r.name = b.room_name
-    JOIN moves m ON m.id = r.move_id
-    WHERE b.id = ? AND m.user_id = ?
-    LIMIT 1
-  `;
-  db.query(q, [boxId, req.user.id], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
-    if (!rows.length) return res.status(404).json({ message: "Box not found" });
-    res.json(rows[0]);
-  });
+
+  try {
+    const owns = await checkUserOwnsBox(Number(boxId), req.user.id);
+    if (!owns) return res.status(404).json({ message: "Box not found" });
+
+    const sql = "CALL sp_get_box(?)";
+    db.query(sql, [boxId], (err, results) => {
+      if (err) return res.status(500).json({ error: err.message });
+      const rows = (results && results[0]) || [];
+      if (!rows.length) {
+        return res.status(404).json({ message: "Box not found" });
+      }
+      res.json(rows[0]);
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 };
 
-export const updateBox = (req, res) => {
+export const updateBox = async (req, res) => {
   const { boxId } = req.params;
   const { label_code, fragile, weight, status } = req.body;
 
@@ -124,93 +136,67 @@ export const updateBox = (req, res) => {
     return res.status(400).json({ message: "Invalid status" });
   }
 
-  const check = `
-    SELECT b.id
-    FROM boxes b
-    JOIN rooms r ON r.move_id = b.move_id AND r.name = b.room_name
-    JOIN moves m ON m.id = r.move_id
-    WHERE b.id = ? AND m.user_id = ?
-    LIMIT 1
-  `;
-  db.query(check, [boxId, req.user.id], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
-    if (!rows.length) return res.status(404).json({ message: "Box not found" });
+  const hasAnyField =
+    label_code !== undefined ||
+    fragile !== undefined ||
+    weight !== undefined ||
+    status !== undefined;
 
-    const fields = [];
-    const params = [];
+  if (!hasAnyField) {
+    return res.status(400).json({ message: "No fields to update" });
+  }
 
-    if (label_code !== undefined) {
-      fields.push("label_code = ?");
-      params.push(label_code);
-    }
-    if (fragile !== undefined) {
-      fields.push("fragile = ?");
-      params.push(fragile ? 1 : 0);
-    }
-    if (weight !== undefined) {
-      fields.push("weight = ?");
-      params.push(weight);
-    }
-    if (status !== undefined) {
-      fields.push("status = ?");
-      params.push(status);
-    }
+  try {
+    const owns = await checkUserOwnsBox(Number(boxId), req.user.id);
+    if (!owns) return res.status(404).json({ message: "Box not found" });
 
-    if (!fields.length) {
-      return res.status(400).json({ message: "No fields to update" });
-    }
+    const sql = "CALL sp_update_box(?, ?, ?, ?, ?)";
+    const params = [
+      boxId,
+      label_code !== undefined ? label_code : null,
+      fragile !== undefined ? (fragile ? 1 : 0) : null,
+      weight !== undefined ? weight : null,
+      status !== undefined ? status : null
+    ];
 
-    const q2 = `UPDATE boxes SET ${fields.join(", ")} WHERE id = ? LIMIT 1`;
-    params.push(boxId);
-
-    db.query(q2, params, (err2) => {
-      if (err2) {
-        if (err2.code === "ER_DUP_ENTRY") {
-          return res
-            .status(400)
-            .json({ message: "label_code must be unique" });
+    db.query(sql, params, (err) => {
+      if (err) {
+        if (err.code === "ER_DUP_ENTRY") {
+          return res.status(400).json({ message: "label_code must be unique" });
         }
-        return res.status(500).json({ error: err2.message });
+        return res.status(500).json({ error: err.message });
       }
       res.json({ message: "Box updated" });
     });
-  });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 };
 
-export const deleteBox = (req, res) => {
+export const deleteBox = async (req, res) => {
   const { boxId } = req.params;
 
-  const check = `
-    SELECT b.id
-    FROM boxes b
-    JOIN rooms r ON r.move_id = b.move_id AND r.name = b.room_name
-    JOIN moves m ON m.id = r.move_id
-    WHERE b.id = ? AND m.user_id = ?
-    LIMIT 1
-  `;
-  db.query(check, [boxId, req.user.id], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
-    if (!rows.length) return res.status(404).json({ message: "Box not found" });
+  try {
+    const owns = await checkUserOwnsBox(Number(boxId), req.user.id);
+    if (!owns) return res.status(404).json({ message: "Box not found" });
 
-    db.query("DELETE FROM boxes WHERE id = ? LIMIT 1", [boxId], (err2) => {
-      if (err2) return res.status(500).json({ error: err2.message });
+    const sql = "CALL sp_delete_box(?)";
+    db.query(sql, [boxId], (err) => {
+      if (err) return res.status(500).json({ error: err.message });
       res.json({ message: "Box deleted" });
     });
-  });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 };
 
 export const scanByLabel = (req, res) => {
   const { labelCode } = req.params;
-  const q = `
-    SELECT b.id, b.move_id, b.room_name, b.label_code, b.fragile, b.weight, b.status
-    FROM boxes b
-    JOIN rooms r ON r.move_id = b.move_id AND r.name = b.room_name
-    JOIN moves m ON m.id = r.move_id
-    WHERE b.label_code = ? AND m.user_id = ?
-    LIMIT 1
-  `;
-  db.query(q, [labelCode, req.user.id], (err, rows) => {
+  const sql = "CALL sp_scan_box_by_label(?, ?)";
+
+  db.query(sql, [labelCode, req.user.id], (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
+    const rows = (results && results[0]) || [];
     if (!rows.length) return res.status(404).json({ message: "Box not found" });
     res.json(rows[0]);
   });

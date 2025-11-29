@@ -1,99 +1,177 @@
 import { db } from "../db.js";
 
-
-const userOwnsBox = (boxId, userId) =>
-  new Promise((resolve, reject) => {
-    const q = `
-      SELECT b.id
-      FROM boxes b
-      JOIN rooms r
-        ON r.move_id = b.move_id
-       AND r.name    = b.room_name
-      JOIN moves m ON m.id = r.move_id
-      WHERE b.id = ? AND m.user_id = ?
-      LIMIT 1
-    `;
-    db.query(q, [boxId, userId], (err, rows) => {
-      if (err) return reject(err);
-      resolve(rows.length === 1);
-    });
+function userOwnsBox(boxId, userId) {
+  return new Promise((resolve, reject) => {
+    db.query(
+      "CALL sp_check_user_owns_box(?, ?, @owns)",
+      [boxId, userId],
+      (err) => {
+        if (err) return reject(err);
+        db.query("SELECT @owns AS owns", (err2, rows2) => {
+          if (err2) return reject(err2);
+          const row = rows2 && rows2[0] ? rows2[0] : {};
+          const owns =
+            row.owns === 1 ||
+            row.owns === true ||
+            row.owns === "1" ||
+            row.owns === "true";
+          resolve(owns);
+        });
+      }
+    );
   });
+}
 
-
-
-const categoryExists = (categoryId) =>
-  new Promise((resolve, reject) => {
-    db.query("SELECT id FROM categories WHERE id = ? LIMIT 1", [categoryId], (err, rows) => {
-      if (err) return reject(err);
-      resolve(rows.length === 1);
-    });
+function categoryExists(categoryId) {
+  return new Promise((resolve, reject) => {
+    db.query(
+      "CALL sp_check_category_exists(?, @exists)",
+      [categoryId],
+      (err) => {
+        if (err) return reject(err);
+        db.query("SELECT @exists AS existsFlag", (err2, rows2) => {
+          if (err2) return reject(err2);
+          const row = rows2 && rows2[0] ? rows2[0] : {};
+          const exists =
+            row.existsFlag === 1 ||
+            row.existsFlag === true ||
+            row.existsFlag === "1" ||
+            row.existsFlag === "true";
+          resolve(exists);
+        });
+      }
+    );
   });
+}
 
+function listCategoriesForBoxInternal(boxId) {
+  return new Promise((resolve, reject) => {
+    db.query(
+      "CALL sp_list_categories_for_box(?)",
+      [boxId],
+      (err, rows) => {
+        if (err) return reject(err);
+        const data = Array.isArray(rows) && Array.isArray(rows[0]) ? rows[0] : [];
+        resolve(data || []);
+      }
+    );
+  });
+}
+
+function attachCategoryToBoxInternal(boxId, categoryId) {
+  return new Promise((resolve, reject) => {
+    db.query(
+      "CALL sp_attach_category_to_box(?, ?, @created)",
+      [boxId, categoryId],
+      (err) => {
+        if (err) return reject(err);
+        db.query("SELECT @created AS created", (err2, rows2) => {
+          if (err2) return reject(err2);
+          const row = rows2 && rows2[0] ? rows2[0] : {};
+          const created =
+            row.created === 1 ||
+            row.created === true ||
+            row.created === "1" ||
+            row.created === "true";
+          resolve(created);
+        });
+      }
+    );
+  });
+}
+
+function detachCategoryFromBoxInternal(boxId, categoryId) {
+  return new Promise((resolve, reject) => {
+    db.query(
+      "CALL sp_detach_category_from_box(?, ?, @success, @message)",
+      [boxId, categoryId],
+      (err) => {
+        if (err) return reject(err);
+        db.query(
+          "SELECT @success AS success, @message AS message",
+          (err2, rows2) => {
+            if (err2) return reject(err2);
+            const row = rows2 && rows2[0] ? rows2[0] : {};
+            const success =
+              row.success === 1 ||
+              row.success === true ||
+              row.success === "1" ||
+              row.success === "true";
+            resolve({
+              success,
+              message: row.message || ""
+            });
+          }
+        );
+      }
+    );
+  });
+}
 
 export const listCategoriesForBox = async (req, res) => {
   const { boxId } = req.params;
   try {
     const owns = await userOwnsBox(Number(boxId), req.user.id);
-    if (!owns) return res.status(404).json({ message: "Box not found" });
-
-    const q = `
-      SELECT c.id, c.name
-      FROM box_categories bc
-      JOIN categories c ON c.id = bc.category_id
-      WHERE bc.box_id = ?
-      ORDER BY c.name ASC
-    `;
-    db.query(q, [boxId], (err, rows) => {
-      if (err) return res.status(500).json({ error: err.message });
-      res.json(rows);
-    });
+    if (!owns) {
+      return res.status(404).json({ message: "Box not found" });
+    }
+    const data = await listCategoriesForBoxInternal(Number(boxId));
+    res.json(data);
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
 };
-
 
 export const attachCategoryToBox = async (req, res) => {
   const { boxId, categoryId } = req.params;
   try {
     const owns = await userOwnsBox(Number(boxId), req.user.id);
-    if (!owns) return res.status(404).json({ message: "Box not found" });
+    if (!owns) {
+      return res.status(404).json({ message: "Box not found" });
+    }
 
-    const catOk = await categoryExists(Number(categoryId));
-    if (!catOk) return res.status(400).json({ message: "Invalid categoryId" });
+    const exists = await categoryExists(Number(categoryId));
+    if (!exists) {
+      return res.status(400).json({ message: "Invalid categoryId" });
+    }
 
-    db.query(
-      "INSERT IGNORE INTO box_categories (box_id, category_id) VALUES (?, ?)",
-      [boxId, categoryId],
-      (err, result) => {
-        if (err) return res.status(500).json({ error: err.message });
-        const created = result.affectedRows > 0;
-        res.status(created ? 201 : 200).json({
-          message: created ? "Category attached to box" : "Already attached"
-        });
-      }
+    const created = await attachCategoryToBoxInternal(
+      Number(boxId),
+      Number(categoryId)
     );
+
+    if (created) {
+      return res
+        .status(201)
+        .json({ message: "Category attached to box" });
+    }
+    res.status(200).json({ message: "Already attached" });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
 };
 
-
 export const detachCategoryFromBox = async (req, res) => {
   const { boxId, categoryId } = req.params;
   try {
     const owns = await userOwnsBox(Number(boxId), req.user.id);
-    if (!owns) return res.status(404).json({ message: "Box not found" });
+    if (!owns) {
+      return res.status(404).json({ message: "Box not found" });
+    }
 
-    db.query(
-      "DELETE FROM box_categories WHERE box_id = ? AND category_id = ?",
-      [boxId, categoryId],
-      (err, result) => {
-        if (err) return res.status(500).json({ error: err.message });
-        if (!result.affectedRows) return res.status(404).json({ message: "Link not found" });
-        res.json({ message: "Category detached from box" });
-      }
+    const result = await detachCategoryFromBoxInternal(
+      Number(boxId),
+      Number(categoryId)
     );
+
+    if (!result.success) {
+      if ((result.message || "").toLowerCase().includes("link not found")) {
+        return res.status(404).json({ message: result.message || "Link not found" });
+      }
+      return res.status(400).json({ message: result.message || "Detach failed" });
+    }
+
+    res.json({ message: result.message || "Category detached from box" });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

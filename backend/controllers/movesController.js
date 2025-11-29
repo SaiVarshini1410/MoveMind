@@ -8,110 +8,80 @@ const ALLOWED_STATUS = new Set([
   "done"
 ]);
 
-const addressBelongsToUser = (userId, addressId) =>
-  new Promise((resolve, reject) => {
-    if (!addressId) return resolve(false);
-
-    const q = `
-      SELECT address_id
-      FROM user_addresses
-      WHERE address_id = ? AND user_id = ?
-      LIMIT 1
-    `;
-    db.query(q, [addressId, userId], (err, rows) => {
-      if (err) return reject(err);
-      resolve(rows.length === 1);
-    });
-  });
-
 export const listMoves = (req, res) => {
-  const q = `
-    SELECT id, title, move_date, status, created_at, from_address_id, to_address_id
-    FROM moves
-    WHERE user_id = ?
-    ORDER BY created_at DESC
-  `;
-  db.query(q, [req.user.id], (err, rows) => {
+  const q = "CALL sp_list_moves(?)";
+  db.query(q, [req.user.id], (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
+    const rows = results && results[0] ? results[0] : [];
     res.json(rows);
   });
 };
 
 export const getMove = (req, res) => {
   const { id } = req.params;
-  const q = `
-    SELECT id, title, move_date, status, created_at, from_address_id, to_address_id
-    FROM moves
-    WHERE id = ? AND user_id = ?
-    LIMIT 1
-  `;
-  db.query(q, [id, req.user.id], (err, rows) => {
+  const q = "CALL sp_get_move(?, ?)";
+  db.query(q, [id, req.user.id], (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
+    const rows = results && results[0] ? results[0] : [];
     if (!rows.length) return res.status(404).json({ message: "Move not found" });
     res.json(rows[0]);
   });
 };
 
-export const createMove = async (req, res) => {
-  try {
-    const {
+export const createMove = (req, res) => {
+  const {
+    title,
+    move_date,
+    status = "planned",
+    from_address_id,
+    to_address_id
+  } = req.body;
+
+  if (!title || !move_date || !from_address_id || !to_address_id) {
+    return res.status(400).json({
+      message: "title, move_date, from_address_id, to_address_id are required"
+    });
+  }
+
+  if (!ALLOWED_STATUS.has(status)) {
+    return res.status(400).json({ message: "Invalid status" });
+  }
+
+  const call = "CALL sp_create_move(?,?,?,?,?,?,@p_move_id,@p_message)";
+  db.query(
+    call,
+    [
+      req.user.id,
       title,
       move_date,
-      status = "planned",
+      status,
       from_address_id,
       to_address_id
-    } = req.body;
+    ],
+    (err) => {
+      if (err) return res.status(500).json({ error: err.message });
 
-    if (!title || !move_date || !from_address_id || !to_address_id) {
-      return res.status(400).json({
-        message: "title, move_date, from_address_id, to_address_id are required"
+      const outQuery = "SELECT @p_move_id AS move_id, @p_message AS message";
+      db.query(outQuery, (err2, rows2) => {
+        if (err2) return res.status(500).json({ error: err2.message });
+        const row = rows2 && rows2[0] ? rows2[0] : {};
+        if (!row.move_id) {
+          const msg = row.message || "Failed to create move";
+          return res.status(400).json({ message: msg });
+        }
+        res
+          .status(201)
+          .json({ id: row.move_id, message: row.message || "Move created" });
       });
     }
-
-    if (!ALLOWED_STATUS.has(status)) {
-      return res.status(400).json({ message: "Invalid status" });
-    }
-
-    const fromOk = await addressBelongsToUser(req.user.id, from_address_id);
-    const toOk = await addressBelongsToUser(req.user.id, to_address_id);
-
-    if (!fromOk) {
-      return res.status(400).json({ message: "Invalid from_address_id" });
-    }
-    if (!toOk) {
-      return res.status(400).json({ message: "Invalid to_address_id" });
-    }
-
-    const q = `
-      INSERT INTO moves (user_id, title, move_date, status, from_address_id, to_address_id)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `;
-    db.query(
-      q,
-      [
-        req.user.id,
-        title,
-        move_date,
-        status,
-        from_address_id,
-        to_address_id
-      ],
-      (err, result) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.status(201).json({ id: result.insertId, message: "Move created" });
-      }
-    );
-  } catch (e) {
-    console.error("createMove error:", e);
-    res.status(500).json({ error: e.message });
-  }
+  );
 };
 
-export const updateMove = async (req, res) => {
+export const updateMove = (req, res) => {
   const { id } = req.params;
   const { title, move_date, status, from_address_id, to_address_id } = req.body;
 
-  if (status && !ALLOWED_STATUS.has(status)) {
+  if (status !== undefined && !ALLOWED_STATUS.has(status)) {
     return res.status(400).json({ message: "Invalid status" });
   }
 
@@ -121,79 +91,79 @@ export const updateMove = async (req, res) => {
       .json({ message: "move_date cannot be empty or null" });
   }
 
-  try {
-    if (from_address_id !== undefined) {
-      const fromOk = await addressBelongsToUser(req.user.id, from_address_id);
-      if (!fromOk) {
-        return res.status(400).json({ message: "Invalid from_address_id" });
-      }
+  const titleParam = title !== undefined ? title : null;
+  const moveDateParam = move_date !== undefined ? move_date : null;
+  const statusParam = status !== undefined ? status : null;
+  const fromAddressParam =
+    from_address_id !== undefined ? from_address_id : null;
+  const toAddressParam = to_address_id !== undefined ? to_address_id : null;
+
+  const call =
+    "CALL sp_update_move(?,?,?,?,?,?,?,@p_success,@p_message)";
+  db.query(
+    call,
+    [
+      id,
+      req.user.id,
+      titleParam,
+      moveDateParam,
+      statusParam,
+      fromAddressParam,
+      toAddressParam
+    ],
+    (err) => {
+      if (err) return res.status(500).json({ error: err.message });
+
+      const outQuery =
+        "SELECT @p_success AS success, @p_message AS message";
+      db.query(outQuery, (err2, rows2) => {
+        if (err2) return res.status(500).json({ error: err2.message });
+        const row = rows2 && rows2[0] ? rows2[0] : {};
+        const success = row.success === 1 || row.success === true;
+        const msg = row.message || "";
+
+        if (!success) {
+          if (msg === "Move not found") {
+            return res.status(404).json({ message: msg });
+          }
+          if (
+            msg === "Invalid from_address_id" ||
+            msg === "Invalid to_address_id"
+          ) {
+            return res.status(400).json({ message: msg });
+          }
+          return res.status(400).json({ message: msg || "Failed to update move" });
+        }
+
+        res.json({ message: msg || "Move updated" });
+      });
     }
-
-    if (to_address_id !== undefined) {
-      const toOk = await addressBelongsToUser(req.user.id, to_address_id);
-      if (!toOk) {
-        return res.status(400).json({ message: "Invalid to_address_id" });
-      }
-    }
-  } catch (e) {
-    console.error("updateMove address validation error:", e);
-    return res.status(500).json({ error: e.message });
-  }
-
-  const fields = [];
-  const params = [];
-
-  if (title !== undefined) {
-    fields.push("title = ?");
-    params.push(title);
-  }
-  if (move_date !== undefined) {
-    fields.push("move_date = ?");
-    params.push(move_date);
-  }
-  if (status !== undefined) {
-    fields.push("status = ?");
-    params.push(status);
-  }
-  if (from_address_id !== undefined) {
-    fields.push("from_address_id = ?");
-    params.push(from_address_id);
-  }
-  if (to_address_id !== undefined) {
-    fields.push("to_address_id = ?");
-    params.push(to_address_id);
-  }
-
-  if (!fields.length) {
-    return res.status(400).json({ message: "No fields to update" });
-  }
-
-  const q = `
-    UPDATE moves
-    SET ${fields.join(", ")}
-    WHERE id = ? AND user_id = ?
-    LIMIT 1
-  `;
-  params.push(id, req.user.id);
-
-  db.query(q, params, (err, result) => {
-    if (err) return res.status(500).json({ error: err.message });
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ message: "Move not found" });
-    }
-    res.json({ message: "Move updated" });
-  });
+  );
 };
 
 export const deleteMove = (req, res) => {
   const { id } = req.params;
-  const q = "DELETE FROM moves WHERE id = ? AND user_id = ? LIMIT 1";
 
-  db.query(q, [id, req.user.id], (err, result) => {
+  const call = "CALL sp_delete_move(?,?,@p_success,@p_message)";
+  db.query(call, [id, req.user.id], (err) => {
     if (err) return res.status(500).json({ error: err.message });
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ message: "Move not found" });
-    }
-    res.json({ message: "Move deleted" });
+
+    const outQuery =
+      "SELECT @p_success AS success, @p_message AS message";
+    db.query(outQuery, (err2, rows2) => {
+      if (err2) return res.status(500).json({ error: err2.message });
+      const row = rows2 && rows2[0] ? rows2[0] : {};
+      const success = row.success === 1 || row.success === true;
+      const msg = row.message || "";
+
+      if (!success) {
+        if (msg === "Move not found") {
+          return res.status(404).json({ message: msg });
+        }
+        return res.status(400).json({ message: msg || "Failed to delete move" });
+      }
+
+      res.json({ message: msg || "Move deleted" });
+    });
   });
 };

@@ -1,19 +1,5 @@
 import { db } from "../db.js";
 
-
-export const listUtilities = (_req, res) => {
-  const q = `
-    SELECT id, provider_name, type
-    FROM utilities
-    ORDER BY provider_name ASC
-  `;
-  db.query(q, (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json(rows);
-  });
-};
-
-
 const ALLOWED_TYPES = new Set([
   "electricity",
   "gas",
@@ -23,77 +9,93 @@ const ALLOWED_TYPES = new Set([
   "other"
 ]);
 
+export const listUtilities = (_req, res) => {
+  const sql = "CALL sp_list_utilities()";
+  db.query(sql, (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    const rows = results && results[0] ? results[0] : [];
+    res.json(rows);
+  });
+};
+
 export const createUtility = (req, res) => {
   const { provider_name, type } = req.body;
 
   if (!provider_name || !type) {
-    return res.status(400).json({ message: "provider_name and type are required" });
+    return res
+      .status(400)
+      .json({ message: "provider_name and type are required" });
   }
   if (!ALLOWED_TYPES.has(type)) {
     return res.status(400).json({ message: "Invalid type" });
   }
 
-  const q = `
-    INSERT INTO utilities (provider_name, type)
-    VALUES (?, ?)
-  `;
-  db.query(q, [provider_name, type], (err, result) => {
+  const sql =
+    "CALL sp_create_utility(?, ?, @p_utility_id, @p_message); SELECT @p_utility_id AS utility_id, @p_message AS message;";
+  db.query(sql, [provider_name, type], (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
-    res.status(201).json({ id: result.insertId, message: "Utility created" });
+
+    const outRow =
+      results && results[1] && results[1][0] ? results[1][0] : null;
+
+    res.status(201).json({
+      id: outRow ? outRow.utility_id : null,
+      message: outRow ? outRow.message : "Utility created"
+    });
   });
 };
-
 
 export const updateUtility = (req, res) => {
   const { utilityId } = req.params;
   const { provider_name, type } = req.body;
 
-  const fields = [];
-  const params = [];
-
-  if (provider_name !== undefined) {
-    fields.push("provider_name = ?");
-    params.push(provider_name);
-  }
-  if (type !== undefined) {
-    if (!ALLOWED_TYPES.has(type)) {
-      return res.status(400).json({ message: "Invalid type" });
-    }
-    fields.push("type = ?");
-    params.push(type);
+  if (type !== undefined && !ALLOWED_TYPES.has(type)) {
+    return res.status(400).json({ message: "Invalid type" });
   }
 
-  if (!fields.length) {
+  if (provider_name === undefined && type === undefined) {
     return res.status(400).json({ message: "No fields to update" });
   }
 
-  const q = `
-    UPDATE utilities
-    SET ${fields.join(", ")}
-    WHERE id = ?
-    LIMIT 1
-  `;
-  params.push(utilityId);
+  const sql =
+    "CALL sp_update_utility(?, ?, ?, @p_success, @p_message); SELECT @p_success AS success, @p_message AS message;";
+  db.query(
+    sql,
+    [utilityId, provider_name ?? null, type ?? null],
+    (err, results) => {
+      if (err) return res.status(500).json({ error: err.message });
 
-  db.query(q, params, (err, result) => {
-    if (err) return res.status(500).json({ error: err.message });
-    if (!result.affectedRows) {
-      return res.status(404).json({ message: "Utility not found" });
+      const outRow =
+        results && results[1] && results[1][0] ? results[1][0] : null;
+
+      if (!outRow || Number(outRow.success) === 0) {
+        return res
+          .status(404)
+          .json({ message: outRow ? outRow.message : "Utility not found" });
+      }
+
+      res.json({ message: outRow.message || "Utility updated" });
     }
-    res.json({ message: "Utility updated" });
-  });
+  );
 };
-
 
 export const deleteUtility = (req, res) => {
   const { utilityId } = req.params;
 
-  const q = "DELETE FROM utilities WHERE id = ?";
-  db.query(q, [utilityId], (err, result) => {
+  const sql =
+    "CALL sp_delete_utility(?, @p_success, @p_message); SELECT @p_success AS success, @p_message AS message;";
+  db.query(sql, [utilityId], (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
-    if (!result.affectedRows) {
-      return res.status(404).json({ message: "Utility not found" });
+
+    const outRow =
+      results && results[1] && results[1][0] ? results[1][0] : null;
+
+    if (!outRow || Number(outRow.success) === 0) {
+      return res
+        .status(404)
+        .json({ message: outRow ? outRow.message : "Utility not found" });
     }
-    res.json({ message: "Utility deleted" });
+
+    res.json({ message: outRow.message || "Utility deleted" });
   });
 };

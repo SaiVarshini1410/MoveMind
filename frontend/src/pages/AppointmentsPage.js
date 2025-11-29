@@ -1,4 +1,3 @@
-// src/pages/AppointmentsPage.js
 import React, { useEffect, useState, useMemo } from "react";
 import {
   Box,
@@ -40,7 +39,6 @@ const formatStatus = (value) => {
 
 const formatTime = (t) => {
   if (!t) return "—";
-  // "HH:MM:SS" -> "HH:MM"
   return t.substring(0, 5);
 };
 
@@ -71,7 +69,7 @@ function AppointmentsPage() {
     status: "scheduled"
   });
 
-  // Load all moves once
+
   useEffect(() => {
     const loadMoves = async () => {
       setLoading(true);
@@ -97,9 +95,7 @@ function AppointmentsPage() {
     };
 
     loadMoves();
-  }, []); // only once
-
-  // Load appointments whenever selectedMoveId / filters change
+  }, []); 
   useEffect(() => {
     const loadAppointments = async () => {
       if (!selectedMoveId) {
@@ -161,7 +157,6 @@ function AppointmentsPage() {
 
   const handleSelectMove = (e) => {
     setSelectedMoveId(e.target.value);
-    // also reset form + editing state when switching moves
     resetForm();
   };
 
@@ -248,7 +243,6 @@ function AppointmentsPage() {
 
     try {
       await apiClient.delete(`/appointments/${appt.id}`);
-      // reload
       const res = await apiClient.get(
         `/moves/${selectedMoveId}/appointments`
       );
@@ -282,7 +276,7 @@ function AppointmentsPage() {
     }
   };
 
-  // Group appointments by date for the receipt-style list
+
   const groupedByDate = useMemo(() => {
     const groups = {};
     appointments.forEach((a) => {
@@ -290,7 +284,7 @@ function AppointmentsPage() {
       if (!groups[key]) groups[key] = [];
       groups[key].push(a);
     });
-    // sort by date ascending
+
     return Object.entries(groups).sort(([d1], [d2]) =>
       d1.localeCompare(d2)
     );
@@ -298,7 +292,6 @@ function AppointmentsPage() {
 
   return (
     <AppLayout title="Appointments">
-      {/* Page header */}
       <Box sx={{ mb: 3 }}>
         <Typography variant="h4" gutterBottom>
           Appointments
@@ -309,7 +302,6 @@ function AppointmentsPage() {
         </Typography>
       </Box>
 
-      {/* Top filters / move selector */}
       <Paper
         sx={{
           p: 2,
@@ -384,7 +376,7 @@ function AppointmentsPage() {
         </Alert>
       )}
 
-      {/* New / edit appointment form */}
+
       <Paper
         sx={{
           p: 2,
@@ -556,7 +548,7 @@ function AppointmentsPage() {
         </Box>
       </Paper>
 
-      {/* Appointments list (timeline / receipt style) */}
+
       {loading ? (
         <Box sx={{ display: "flex", justifyContent: "center", mt: 3 }}>
           <CircularProgress />

@@ -1,28 +1,61 @@
+// backend/controllers/roomsController.js
 import { db } from "../db.js";
 
-const userOwnsMove = (moveId, userId) =>
+const checkUserOwnsMove = (moveId, userId) =>
   new Promise((resolve, reject) => {
-    const q = "SELECT id FROM moves WHERE id = ? AND user_id = ? LIMIT 1";
-    db.query(q, [moveId, userId], (err, rows) => {
+    const callSql = "CALL sp_check_user_owns_move(?, ?, @owns)";
+    db.query(callSql, [moveId, userId], (err) => {
       if (err) return reject(err);
-      resolve(rows.length === 1);
+
+      const selectSql = "SELECT @owns AS owns";
+      db.query(selectSql, (err2, rows) => {
+        if (err2) return reject(err2);
+        try {
+          const ownsVal = rows?.[0]?.owns;
+          const owns =
+            ownsVal === 1 ||
+            ownsVal === "1" ||
+            ownsVal === true ||
+            ownsVal === "true";
+          resolve(!!owns);
+        } catch (e) {
+          reject(e);
+        }
+      });
+    });
+  });
+
+const checkRoomAndOwnership = (moveId, roomName, userId) =>
+  new Promise((resolve, reject) => {
+    const callSql = "CALL sp_check_room_and_ownership(?, ?, ?, @exists)";
+    db.query(callSql, [moveId, roomName, userId], (err) => {
+      if (err) return reject(err);
+
+      const selectSql = "SELECT @exists AS exists_flag";
+      db.query(selectSql, (err2, rows) => {
+        if (err2) return reject(err2);
+        try {
+          const val = rows?.[0]?.exists_flag;
+          const exists =
+            val === 1 || val === "1" || val === true || val === "true";
+          resolve(!!exists);
+        } catch (e) {
+          reject(e);
+        }
+      });
     });
   });
 
 export const listRooms = async (req, res) => {
   const { moveId } = req.params;
   try {
-    const owns = await userOwnsMove(Number(moveId), req.user.id);
+    const owns = await checkUserOwnsMove(Number(moveId), req.user.id);
     if (!owns) return res.status(404).json({ message: "Move not found" });
 
-    const q = `
-      SELECT move_id, name, floor
-      FROM rooms
-      WHERE move_id = ?
-      ORDER BY name ASC
-    `;
-    db.query(q, [moveId], (err, rows) => {
+    const sql = "CALL sp_list_rooms(?)";
+    db.query(sql, [moveId], (err, results) => {
       if (err) return res.status(500).json({ error: err.message });
+      const rows = results?.[0] || [];
       res.json(rows);
     });
   } catch (e) {
@@ -37,11 +70,11 @@ export const createRoom = async (req, res) => {
   if (!name) return res.status(400).json({ message: "name is required" });
 
   try {
-    const owns = await userOwnsMove(Number(moveId), req.user.id);
+    const owns = await checkUserOwnsMove(Number(moveId), req.user.id);
     if (!owns) return res.status(404).json({ message: "Move not found" });
 
-    const q = "INSERT INTO rooms (move_id, name, floor) VALUES (?, ?, ?)";
-    db.query(q, [moveId, name, floor || null], (err) => {
+    const sql = "CALL sp_create_room(?, ?, ?)";
+    db.query(sql, [moveId, name, floor || null], (err) => {
       if (err) {
         if (err.code === "ER_DUP_ENTRY") {
           return res
@@ -57,76 +90,72 @@ export const createRoom = async (req, res) => {
   }
 };
 
-export const updateRoom = (req, res) => {
+export const updateRoom = async (req, res) => {
   const { moveId, roomName } = req.params;
   const { name, floor } = req.body;
 
-  const check = `
-    SELECT r.move_id, r.name
-    FROM rooms r
-    JOIN moves m ON m.id = r.move_id
-    WHERE r.move_id = ? AND r.name = ? AND m.user_id = ?
-    LIMIT 1
-  `;
-  db.query(check, [moveId, roomName, req.user.id], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
-    if (!rows.length) return res.status(404).json({ message: "Room not found" });
+  try {
+    const exists = await checkRoomAndOwnership(
+      Number(moveId),
+      roomName,
+      req.user.id
+    );
+    if (!exists) return res.status(404).json({ message: "Room not found" });
 
-    const fields = [];
-    const params = [];
-    if (name !== undefined) {
-      fields.push("name = ?");
-      params.push(name);
-    }
-    if (floor !== undefined) {
-      fields.push("floor = ?");
-      params.push(floor || null);
-    }
+    const hasName = name !== undefined;
+    const hasFloor = floor !== undefined;
 
-    if (!fields.length) {
+    if (!hasName && !hasFloor) {
       return res.status(400).json({ message: "No fields to update" });
     }
 
-    const q = `
-      UPDATE rooms
-      SET ${fields.join(", ")}
-      WHERE move_id = ? AND name = ?
-      LIMIT 1
-    `;
-    params.push(moveId, roomName);
+    let sql;
+    let params;
 
-    db.query(q, params, (err2) => {
-      if (err2) {
-        if (err2.code === "ER_DUP_ENTRY") {
+    if (hasName && hasFloor) {
+      sql = "CALL sp_update_room_both(?, ?, ?, ?)";
+      params = [moveId, roomName, name, floor || null];
+    } else if (hasName) {
+      sql = "CALL sp_update_room_name(?, ?, ?)";
+      params = [moveId, roomName, name];
+    } else {
+      sql = "CALL sp_update_room_floor(?, ?, ?)";
+      params = [moveId, roomName, floor || null];
+    }
+
+    db.query(sql, params, (err) => {
+      if (err) {
+        if (err.code === "ER_DUP_ENTRY") {
           return res
             .status(400)
             .json({ message: "Room name must be unique per move" });
         }
-        return res.status(500).json({ error: err2.message });
+        return res.status(500).json({ error: err.message });
       }
       res.json({ message: "Room updated" });
     });
-  });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 };
 
-export const deleteRoom = (req, res) => {
+export const deleteRoom = async (req, res) => {
   const { moveId, roomName } = req.params;
 
-  const check = `
-    SELECT r.move_id, r.name
-    FROM rooms r
-    JOIN moves m ON m.id = r.move_id
-    WHERE r.move_id = ? AND r.name = ? AND m.user_id = ?
-    LIMIT 1
-  `;
-  db.query(check, [moveId, roomName, req.user.id], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
-    if (!rows.length) return res.status(404).json({ message: "Room not found" });
+  try {
+    const exists = await checkRoomAndOwnership(
+      Number(moveId),
+      roomName,
+      req.user.id
+    );
+    if (!exists) return res.status(404).json({ message: "Room not found" });
 
-    const q = "DELETE FROM rooms WHERE move_id = ? AND name = ? LIMIT 1";
-    db.query(q, [moveId, roomName], (err2) => {
-      if (err2) return res.status(500).json({ error: err2.message });
+    const sql = "CALL sp_delete_room(?, ?)";
+    db.query(sql, [moveId, roomName], (err) => {
+      if (err) return res.status(500).json({ error: err.message });
       res.json({ message: "Room deleted" });
     });
-  });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 };

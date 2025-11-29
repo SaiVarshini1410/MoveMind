@@ -10,13 +10,10 @@ import {
 
 const router = express.Router();
 
-
 router.use(requireAuth);
-
 
 router.get("/moves/:moveId/appointments", listAppointmentsByMove);
 router.post("/moves/:moveId/appointments", createAppointment);
-
 
 router.get("/appointments/:appointmentId", getAppointment);
 router.patch("/appointments/:appointmentId", updateAppointment);

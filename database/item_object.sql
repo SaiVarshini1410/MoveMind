@@ -2,28 +2,6 @@
 -- Item Procedures
 -- ============================================
 
--- Check if user owns a box through ownership chain (boxes -> rooms -> moves -> users)
-DELIMITER $$
-
-CREATE PROCEDURE sp_check_user_owns_box(
-  IN p_box_id INT,
-  IN p_user_id INT,
-  OUT p_owns BOOLEAN
-)
-BEGIN
-  DECLARE box_count INT;
-  
-  SELECT COUNT(*) INTO box_count
-  FROM boxes b
-  JOIN rooms r ON r.move_id = b.move_id AND r.name = b.room_name
-  JOIN moves m ON m.id = r.move_id
-  WHERE b.id = p_box_id AND m.user_id = p_user_id;
-  
-  SET p_owns = (box_count > 0);
-END$$
-
-DELIMITER ;
-
 -- List all items for a specific box
 DELIMITER $$
 

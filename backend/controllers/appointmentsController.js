@@ -6,7 +6,6 @@ const ALLOWED_STATUS = new Set([
   "cancelled"
 ]);
 
-
 const userOwnsMove = (moveId, userId) =>
   new Promise((resolve, reject) => {
     const q = "SELECT id FROM moves WHERE id = ? AND user_id = ? LIMIT 1";
@@ -15,7 +14,6 @@ const userOwnsMove = (moveId, userId) =>
       resolve(rows.length === 1);
     });
   });
-
 
 export const listAppointmentsByMove = async (req, res) => {
   const { moveId } = req.params;
@@ -66,7 +64,6 @@ export const listAppointmentsByMove = async (req, res) => {
   }
 };
 
-
 export const createAppointment = async (req, res) => {
   const { moveId } = req.params;
   const {
@@ -79,7 +76,6 @@ export const createAppointment = async (req, res) => {
     contact_phone = null,
     status = "scheduled"
   } = req.body;
-
 
   if (!title || !apt_date || !apt_time) {
     return res.status(400).json({
@@ -124,8 +120,6 @@ export const createAppointment = async (req, res) => {
   }
 };
 
-
-
 export const getAppointment = (req, res) => {
   const { appointmentId } = req.params;
 
@@ -154,7 +148,6 @@ export const getAppointment = (req, res) => {
   });
 };
 
-
 export const updateAppointment = (req, res) => {
   const { appointmentId } = req.params;
   const {
@@ -172,7 +165,6 @@ export const updateAppointment = (req, res) => {
     return res.status(400).json({ message: "Invalid status" });
   }
 
-
   const check = `
     SELECT a.id
     FROM appointments a
@@ -188,14 +180,38 @@ export const updateAppointment = (req, res) => {
     const fields = [];
     const params = [];
 
-    if (title !== undefined)          { fields.push("title = ?");          params.push(title); }
-    if (description !== undefined)    { fields.push("description = ?");    params.push(description); }
-    if (person !== undefined)         { fields.push("person = ?");         params.push(person); }
-    if (apt_date !== undefined)       { fields.push("apt_date = ?");       params.push(apt_date); }
-    if (apt_time !== undefined)       { fields.push("apt_time = ?");       params.push(apt_time); }
-    if (contact_person !== undefined) { fields.push("contact_person = ?"); params.push(contact_person); }
-    if (contact_phone !== undefined)  { fields.push("contact_phone = ?");  params.push(contact_phone); }
-    if (status !== undefined)         { fields.push("status = ?");         params.push(status); }
+    if (title !== undefined) {
+      fields.push("title = ?");
+      params.push(title);
+    }
+    if (description !== undefined) {
+      fields.push("description = ?");
+      params.push(description);
+    }
+    if (person !== undefined) {
+      fields.push("person = ?");
+      params.push(person);
+    }
+    if (apt_date !== undefined) {
+      fields.push("apt_date = ?");
+      params.push(apt_date);
+    }
+    if (apt_time !== undefined) {
+      fields.push("apt_time = ?");
+      params.push(apt_time);
+    }
+    if (contact_person !== undefined) {
+      fields.push("contact_person = ?");
+      params.push(contact_person);
+    }
+    if (contact_phone !== undefined) {
+      fields.push("contact_phone = ?");
+      params.push(contact_phone);
+    }
+    if (status !== undefined) {
+      fields.push("status = ?");
+      params.push(status);
+    }
 
     if (!fields.length) {
       return res.status(400).json({ message: "No fields to update" });
@@ -214,7 +230,6 @@ export const updateAppointment = (req, res) => {
     });
   });
 };
-
 
 export const deleteAppointment = (req, res) => {
   const { appointmentId } = req.params;

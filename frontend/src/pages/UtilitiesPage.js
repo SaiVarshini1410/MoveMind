@@ -193,11 +193,14 @@ function UtilitiesPage() {
       status
     };
 
+    const moveIdToUse = editingMu ? editingMu.move_id : move_id;
+    const utilityIdToUse = editingMu ? editingMu.utility_id : utility_id;
+
     setSaving(true);
     try {
       if (editingMu) {
         await apiClient.patch(
-          `/moves/${move_id}/utilities/${utility_id}`,
+          `/moves/${moveIdToUse}/utilities/${utilityIdToUse}`,
           basePayload
         );
       } else {
@@ -205,11 +208,11 @@ function UtilitiesPage() {
           ...basePayload,
           utility_id: Number(utility_id)
         };
-        await apiClient.post(`/moves/${move_id}/utilities`, payload);
+        await apiClient.post(`/moves/${moveIdToUse}/utilities`, payload);
       }
 
-      setSelectedMoveId(String(move_id));
-      await loadMoveUtilities(move_id);
+      setSelectedMoveId(String(moveIdToUse));
+      await loadMoveUtilities(moveIdToUse);
       setDialogOpen(false);
     } catch (err) {
       const msg =
@@ -481,6 +484,7 @@ function UtilitiesPage() {
               name="move_id"
               value={form.move_id}
               onChange={handleFormChange}
+              disabled={!!editingMu}
             >
               {moves.map((m) => (
                 <MenuItem key={m.id} value={String(m.id)}>
@@ -495,6 +499,7 @@ function UtilitiesPage() {
               name="utility_id"
               value={form.utility_id}
               onChange={handleFormChange}
+              disabled={!!editingMu}
             >
               {utilities.map((u) => (
                 <MenuItem key={u.id} value={String(u.id)}>
