@@ -11,7 +11,7 @@ const ALLOWED_STATUSES = new Set([
 function checkUserOwnsMove(moveId, userId) {
   return new Promise((resolve, reject) => {
     db.query(
-      "CALL sp_check_user_owns_move(?, ?, @owns)",
+      "CALL sp_check_user_owns_move_ownsflag(?, ?, @owns)",
       [moveId, userId],
       (err) => {
         if (err) return reject(err);

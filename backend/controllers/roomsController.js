@@ -3,7 +3,7 @@ import { db } from "../db.js";
 
 const checkUserOwnsMove = (moveId, userId) =>
   new Promise((resolve, reject) => {
-    const callSql = "CALL sp_check_user_owns_move(?, ?, @owns)";
+    const callSql = "CALL sp_check_user_owns_move_ownsflag(?, ?, @owns)";
     db.query(callSql, [moveId, userId], (err) => {
       if (err) return reject(err);
 
