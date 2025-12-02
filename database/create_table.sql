@@ -1,6 +1,7 @@
 CREATE DATABASE IF NOT EXISTS movemind_db;
 USE movemind_db;
 
+
 -- 1) Users
 CREATE TABLE IF NOT EXISTS users (
   id INT AUTO_INCREMENT PRIMARY KEY,
