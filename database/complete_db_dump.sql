@@ -58,7 +58,7 @@ CREATE TABLE IF NOT EXISTS categories (
 -- 5) Utility
 CREATE TABLE IF NOT EXISTS utilities (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  provider_name VARCHAR(100) NOT NULL,
+  provider_name VARCHAR(100) NOT NULL UNIQUE,
   type ENUM ('electricity','gas','water','internet','trash','other') NOT NULL
 );
 
@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS utilities (
 CREATE TABLE IF NOT EXISTS moves (
   id INT PRIMARY KEY AUTO_INCREMENT,
   user_id INT NOT NULL,
-  title VARCHAR(200) NOT NULL,
+  title VARCHAR(200) NOT NULL UNIQUE,
   move_date DATE NOT NULL,
   status ENUM('planned','packing','in_transit','unpacking','done') DEFAULT 'planned',
   from_address_id INT NOT NULL,
@@ -159,6 +159,7 @@ CREATE TABLE IF NOT EXISTS appointments (
   contact_phone VARCHAR(20),
   status ENUM('scheduled','completed','cancelled') DEFAULT 'scheduled',
   FOREIGN KEY (move_id) REFERENCES moves(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT title_move_unq UNIQUE (title, move_id),
   INDEX idx_appt_move (move_id),
   INDEX idx_appt_status (status),
   INDEX idx_appt_date (apt_date)
@@ -172,6 +173,7 @@ CREATE TABLE IF NOT EXISTS documents (
   file_url VARCHAR(500) NOT NULL,
   uploaded_on TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (move_id) REFERENCES moves(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT move_url_unq UNIQUE (move_id, file_url),
   INDEX idx_doc_type (doc_type),
   INDEX idx_documents_move (move_id)
 );
