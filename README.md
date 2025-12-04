@@ -48,7 +48,7 @@ movemind/
 │   ├── .env.example
 │
 └── db/
-    └── movemind_db_dump.sql  # FULL SQL DUMP (tables + procedures + triggers + seed)
+    └── movemind_dump.sql  # FULL SQL DUMP (tables + procedures + triggers + seed)
 ```
 
 ---
@@ -94,7 +94,7 @@ mysql --version
 ### 5.2 Import and Run the SQL Dump
 
 1. Go to **File** -> **Open SQL Script**
-2. Navigate to your project folder: `db/movemind_db_dump.sql`
+2. Navigate to your project folder: `db/movemind_dump.sql`
 3. Click the **lightning bolt icon** to run the script
 4. Wait for completion
 
