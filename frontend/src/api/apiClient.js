@@ -1,9 +1,11 @@
-// src/api/apiClient.js
 import axios from "axios";
 import { getToken, clearAuth } from "../utils/auth";
 
+const baseURL =
+  process.env.REACT_APP_API_BASE_URL || "http://localhost:5001/api";
+
 const apiClient = axios.create({
-  baseURL: "http://localhost:5001/api"
+  baseURL,
 });
 
 apiClient.interceptors.request.use((config) => {
